@@ -20,6 +20,7 @@ class PieMenuWidget(QWidget):
         self.callbacks = callbacks
         self.buttons = {}
         self.active_direction = None
+        self.is_interrupted = False
         self.init_ui()
 
     def init_ui(self):
@@ -146,7 +147,7 @@ class PieMenuWidget(QWidget):
 
     def interrupt_and_wait_for_release(self):
         """Visually hide the menu on interrupt, but keep listening until Space is released."""
-        if not self.is_interrupted:
+        if not getattr(self, 'is_interrupted', False):
             self.is_interrupted = True
             self.active_direction = None
             self.hide()
@@ -157,7 +158,7 @@ class PieMenuWidget(QWidget):
             return
 
         if event.key() in (Qt.Key_Space, Qt.Key_Return, Qt.Key_Enter):
-            if self.is_interrupted:
+            if getattr(self, 'is_interrupted', False):
                 self.cleanup_and_close()
             else:
                 self.trigger_selected_action()
