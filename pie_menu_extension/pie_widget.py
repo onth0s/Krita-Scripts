@@ -1,11 +1,15 @@
+import math
 from PyQt5.QtCore import Qt, QPoint
-from PyQt5.QtGui import QCursor
-from PyQt5.QtWidgets import QWidget, QPushButton, QLabel
+from PyQt5.QtGui import QCursor, QPainter, QPen, QBrush, QColor
+from PyQt5.QtWidgets import QWidget, QPushButton
 
 class PieMenuWidget(QWidget):
     """
     Blender-style radial Pie Menu widget displayed at mouse position.
-    Triggers the highlighted action upon releasing the trigger key (Space) or clicking.
+    Features:
+    1. Circular neutral deadzone in the center (no selection when cursor is in center).
+    2. Vector angle sector selection (highlights blue based on direction from center).
+    3. Triggers the currently highlighted action upon Space key release.
     """
     def __init__(self, callbacks, parent=None):
         super().__init__(parent, Qt.FramelessWindowHint | Qt.Popup | Qt.NoDropShadowWindowHint)
@@ -15,6 +19,7 @@ class PieMenuWidget(QWidget):
         self.setMouseTracking(True)
         self.callbacks = callbacks
         self.buttons = {}
+        self.active_direction = None
         self.init_ui()
 
     def init_ui(self):
@@ -34,7 +39,7 @@ class PieMenuWidget(QWidget):
                 font-size: 13px;
                 font-weight: bold;
             }
-            QPushButton:hover, QPushButton:focus {
+            QPushButton[active="true"] {
                 background-color: rgba(66, 153, 225, 230);
                 color: #FFFFFF;
                 border: 2px solid #63B3ED;
@@ -55,12 +60,6 @@ class PieMenuWidget(QWidget):
             'west':  (center_x - btn_w - 30, center_y - btn_h // 2),
         }
 
-        # Center indicator label
-        center_label = QLabel("PIE", self)
-        center_label.setStyleSheet("color: #A0AEC0; font-weight: bold; font-size: 11px;")
-        center_label.setGeometry(center_x - 15, center_y - 10, 30, 20)
-        center_label.setAlignment(Qt.AlignCenter)
-
         items = [
             ('north', "Rousseau (North)", self.callbacks.get('north')),
             ('east',  "Descartes (East)",  self.callbacks.get('east')),
@@ -74,10 +73,10 @@ class PieMenuWidget(QWidget):
             btn.setGeometry(x, y, btn_w, btn_h)
             btn.setMouseTracking(True)
             if cb:
-                btn.clicked.connect(self.make_handler(cb))
+                btn.clicked.connect(self.make_click_handler(key, cb))
             self.buttons[key] = btn
 
-    def make_handler(self, callback):
+    def make_click_handler(self, key, callback):
         def handler():
             self.cleanup_and_close()
             callback()
@@ -89,26 +88,69 @@ class PieMenuWidget(QWidget):
         self.show()
         self.activateWindow()
         self.grabKeyboard()
+        self.update_selection_from_mouse()
+
+    def paintEvent(self, event):
+        super().paintEvent(event)
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+
+        center = QPoint(180, 180)
+        
+        # Circular neutral center zone rendering
+        if self.active_direction is None:
+            painter.setPen(QPen(QColor(160, 174, 192, 140), 2))
+            painter.setBrush(QBrush(QColor(26, 32, 44, 200)))
+            painter.drawEllipse(center, 26, 26)
+        else:
+            painter.setPen(QPen(QColor(99, 179, 237, 240), 2))
+            painter.setBrush(QBrush(QColor(49, 130, 206, 180)))
+            painter.drawEllipse(center, 26, 26)
 
     def mouseMoveEvent(self, event):
-        self.update_hover_state()
+        self.update_selection_from_mouse()
         super().mouseMoveEvent(event)
 
-    def update_hover_state(self):
-        cursor_pos = QCursor.pos()
+    def update_selection_from_mouse(self):
+        cursor_pos = self.mapFromGlobal(QCursor.pos())
+        dx = cursor_pos.x() - 180
+        dy = cursor_pos.y() - 180
+        dist = math.hypot(dx, dy)
+
+        old_direction = self.active_direction
+
+        # Circular neutral deadzone (radius 38px)
+        if dist < 38:
+            self.active_direction = None
+        else:
+            angle = math.degrees(math.atan2(dy, dx))
+            if -135 <= angle < -45:
+                self.active_direction = 'north'
+            elif -45 <= angle < 45:
+                self.active_direction = 'east'
+            elif 45 <= angle < 135:
+                self.active_direction = 'south'
+            else:
+                self.active_direction = 'west'
+
+        if self.active_direction != old_direction:
+            self.update_button_highlights()
+            self.update()
+
+    def update_button_highlights(self):
         for key, btn in self.buttons.items():
-            if btn.rect().contains(btn.mapFromGlobal(cursor_pos)):
-                btn.setFocus()
-                break
+            is_active = (key == self.active_direction)
+            btn.setProperty("active", is_active)
+            btn.style().unpolish(btn)
+            btn.style().polish(btn)
 
     def keyReleaseEvent(self, event):
         if event.isAutoRepeat():
             event.ignore()
             return
 
-        # When Space (or Return/Enter) is released, execute highlighted option if hovering
         if event.key() in (Qt.Key_Space, Qt.Key_Return, Qt.Key_Enter):
-            self.trigger_hovered_action()
+            self.trigger_selected_action()
         else:
             super().keyReleaseEvent(event)
 
@@ -122,13 +164,10 @@ class PieMenuWidget(QWidget):
         else:
             super().keyPressEvent(event)
 
-    def trigger_hovered_action(self):
-        cursor_pos = QCursor.pos()
-        target_cb = None
-        for key, btn in self.buttons.items():
-            if btn.rect().contains(btn.mapFromGlobal(cursor_pos)):
-                target_cb = self.callbacks.get(key)
-                break
+    def trigger_selected_action(self):
+        self.update_selection_from_mouse()
+        target_direction = self.active_direction
+        target_cb = self.callbacks.get(target_direction) if target_direction else None
         
         self.cleanup_and_close()
         if target_cb:
