@@ -69,17 +69,32 @@ class FiltersPieMenuExtension(Extension):
 
     def trigger_action(self, action_id, fallback_text):
         app = Krita.instance()
-        action = app.action(action_id)
-        if action:
-            action.trigger()
-            return True
 
-        # Fallback search by label text
+        # Candidates to attempt in order
+        candidates = [
+            action_id,
+            f"krita_filter_{action_id}",
+            "krita_filter_perchannel" if "curve" in fallback_text.lower() else "",
+            "krita_filter_hsvadjustment" if "hsv" in fallback_text.lower() else "",
+        ]
+
+        for cid in candidates:
+            if not cid:
+                continue
+            action = app.action(cid)
+            if action:
+                action.trigger()
+                return True
+
+        # Fallback search across all registered Krita actions
         search_target = fallback_text.replace('.', '').replace('&', '').strip().lower()
         for act in app.actions():
             act_text = act.text().replace('&', '').replace('.', '').strip().lower()
             act_id = act.objectName().lower()
-            if search_target in act_text or action_id.lower() in act_id:
+            if search_target and (search_target in act_text or act_text in search_target):
+                act.trigger()
+                return True
+            if action_id.lower() in act_id:
                 act.trigger()
                 return True
         return False

@@ -5,17 +5,17 @@ from PyQt5.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QGridLayout,
                              QLabel, QComboBox, QPushButton, QMessageBox)
 
 FILTER_OPTIONS = [
-    ("HSV Adjustment...", "hsv_adjustment"),
-    ("Color Curves...", "color_curves"),
-    ("Color Balance...", "color_balance"),
-    ("Slope, Offset, Power...", "slope_offset_power"),
-    ("Desaturate...", "desaturate"),
-    ("Auto Contrast", "auto_contrast"),
-    ("Levels...", "levels"),
-    ("Invert", "invert"),
-    ("Threshold...", "threshold"),
-    ("Dodge...", "dodge"),
-    ("Burn...", "burn"),
+    ("HSV Adjustment...", "krita_filter_hsvadjustment"),
+    ("Color Curves...", "krita_filter_perchannel"),
+    ("Color Balance...", "krita_filter_colorbalance"),
+    ("Slope, Offset, Power...", "krita_filter_slope_offset_power"),
+    ("Desaturate...", "krita_filter_desaturate"),
+    ("Auto Contrast", "krita_filter_autocontrast"),
+    ("Levels...", "krita_filter_levels"),
+    ("Invert", "krita_filter_invert"),
+    ("Threshold...", "krita_filter_threshold"),
+    ("Dodge...", "krita_filter_dodge"),
+    ("Burn...", "krita_filter_burn"),
 ]
 
 SECTOR_NAMES = [
@@ -67,18 +67,15 @@ class SectorConfigDialog(QDialog):
             lbl = QLabel(f"<b>{name}:</b>", self)
             combo = QComboBox(self)
 
-            # Populate combo box
             for label, act_id in FILTER_OPTIONS:
                 combo.addItem(label, act_id)
 
-            # Set current value if present in config
             if code in self.current_config:
                 curr_act = self.current_config[code].get('action_id', '')
                 index = combo.findData(curr_act)
                 if index >= 0:
                     combo.setCurrentIndex(index)
                 else:
-                    # Match by index if fallback
                     combo.setCurrentIndex(idx % len(FILTER_OPTIONS))
             else:
                 combo.setCurrentIndex(idx % len(FILTER_OPTIONS))
@@ -89,7 +86,6 @@ class SectorConfigDialog(QDialog):
 
         layout.addLayout(grid)
 
-        # Action Buttons
         btn_layout = QHBoxLayout()
         btn_save = QPushButton("Save & Apply", self)
         btn_save.setStyleSheet("background-color: #3182CE; color: white; font-weight: bold; padding: 6px 16px; border-radius: 4px;")
