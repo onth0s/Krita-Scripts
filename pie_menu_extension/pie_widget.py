@@ -144,13 +144,23 @@ class PieMenuWidget(QWidget):
             btn.style().unpolish(btn)
             btn.style().polish(btn)
 
+    def interrupt_and_wait_for_release(self):
+        """Visually hide the menu on interrupt, but keep listening until Space is released."""
+        if not self.is_interrupted:
+            self.is_interrupted = True
+            self.active_direction = None
+            self.hide()
+
     def keyReleaseEvent(self, event):
         if event.isAutoRepeat():
             event.ignore()
             return
 
         if event.key() in (Qt.Key_Space, Qt.Key_Return, Qt.Key_Enter):
-            self.trigger_selected_action()
+            if self.is_interrupted:
+                self.cleanup_and_close()
+            else:
+                self.trigger_selected_action()
         else:
             super().keyReleaseEvent(event)
 
@@ -159,16 +169,16 @@ class PieMenuWidget(QWidget):
             event.ignore()
             return
 
-        # F11 or Escape interrupts/cancels the Pie call
+        # F11 or Escape interrupts the Pie call and waits for Space release
         if event.key() in (Qt.Key_F11, Qt.Key_Escape):
-            self.cleanup_and_close()
+            self.interrupt_and_wait_for_release()
         else:
             super().keyPressEvent(event)
 
     def mousePressEvent(self, event):
-        # Right Click interrupts/cancels the Pie call like Blender
+        # Right Click interrupts the Pie call and waits for Space release
         if event.button() == Qt.RightButton:
-            self.cleanup_and_close()
+            self.interrupt_and_wait_for_release()
         else:
             super().mousePressEvent(event)
 

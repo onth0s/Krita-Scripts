@@ -16,8 +16,9 @@ class PieMenuExtension(Extension):
 
     def show_pie_menu(self):
         try:
-            if self.pie_widget is not None and self.pie_widget.isVisible():
-                return
+            if self.pie_widget is not None:
+                if self.pie_widget.isVisible() or getattr(self.pie_widget, 'is_interrupted', False):
+                    return
         except (RuntimeError, ReferenceError):
             self.pie_widget = None
 
