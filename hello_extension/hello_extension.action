@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ActionCollection version="2" name="Scripts">
+    <Actions category="Scripts">
+        <text>Hello World Extension</text>
+        <Action name="hello_world_action">
+            <icon></icon>
+            <text>Hello World Script</text>
+            <whatsThis>Triggers the Hello World Python Extension</whatsThis>
+            <toolTip>Run Hello World Script</toolTip>
+            <iconText>HW Script</iconText>
+            <activationFlags>10000</activationFlags>
+            <shortcut></shortcut>
+            <isCheckable>false</isCheckable>
+            <statusTip></statusTip>
+        </Action>
+    </Actions>
+</ActionCollection>

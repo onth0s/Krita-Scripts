@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Service
+ServiceTypes=Krita/PythonPlugin
+X-KDE-Library=dummy_docker
+X-Python-2-Compatible=false
+Name=Dummy Docker Panel
+Comment=Minimal dummy docker panel demonstrating side panel UIs in Krita.

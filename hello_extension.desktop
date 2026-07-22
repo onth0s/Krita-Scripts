@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Service
+ServiceTypes=Krita/PythonPlugin
+X-KDE-Library=hello_extension
+X-Python-2-Compatible=false
+Name=Hello World Extension
+Comment=Minimal dummy extension demonstrating menu script actions in Krita.
