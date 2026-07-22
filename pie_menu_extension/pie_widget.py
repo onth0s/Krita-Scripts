@@ -7,7 +7,7 @@ class PieMenuWidget(QWidget):
     Blender-style radial Pie Menu widget displayed at the mouse position.
     """
     def __init__(self, callbacks, parent=None):
-        super().__init__(parent, Qt.FramelessWindowHint | Qt.Popup)
+        super().__init__(parent, Qt.FramelessWindowHint | Qt.Popup | Qt.NoDropShadowWindowHint)
         self.setObjectName("PieMenuWidget")
         self.setAttribute(Qt.WA_TranslucentBackground, True)
         self.setAttribute(Qt.WA_DeleteOnClose, True)
