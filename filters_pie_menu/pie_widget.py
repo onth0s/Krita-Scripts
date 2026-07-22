@@ -66,14 +66,14 @@ class PieMenuWidget(QWidget):
         }
 
         items = [
-            ('N',  "HSV Adjustment... (Alt+1)",      self.callbacks.get('N')),
-            ('NE', "Color Curves... (Ctrl+2)",        self.callbacks.get('NE')),
-            ('E',  "Color Balance... (Alt+5)",       self.callbacks.get('E')),
-            ('SE', "Slope, Offset, Power... (Alt+8)", self.callbacks.get('SE')),
-            ('S',  "Desaturate... (Alt+7)",          self.callbacks.get('S')),
-            ('SW', "Auto Contrast (Ctrl+Shift+1)",   self.callbacks.get('SW')),
-            ('W',  "Levels... (Ctrl+1)",             self.callbacks.get('W')),
-            ('NW', "Invert (Ctrl+I)",                self.callbacks.get('NW')),
+            ('N',  "HSV Adjustment...",      self.callbacks.get('N')),
+            ('NE', "Color Curves...",        self.callbacks.get('NE')),
+            ('E',  "Color Balance...",       self.callbacks.get('E')),
+            ('SE', "Slope, Offset, Power...", self.callbacks.get('SE')),
+            ('S',  "Desaturate...",          self.callbacks.get('S')),
+            ('SW', "Auto Contrast",          self.callbacks.get('SW')),
+            ('W',  "Levels...",              self.callbacks.get('W')),
+            ('NW', "Invert",                 self.callbacks.get('NW')),
         ]
 
         for key, text, cb in items:
