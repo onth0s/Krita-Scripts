@@ -70,12 +70,21 @@ class FiltersPieMenuExtension(Extension):
     def trigger_action(self, action_id, fallback_text):
         app = Krita.instance()
 
-        # Candidates to attempt in order
+        raw_id = action_id.replace("krita_filter_", "")
         candidates = [
             action_id,
-            f"krita_filter_{action_id}",
+            f"krita_filter_{raw_id}",
+            f"krita_filter_{raw_id.replace('_', '')}",
             "krita_filter_perchannel" if "curve" in fallback_text.lower() else "",
             "krita_filter_hsvadjustment" if "hsv" in fallback_text.lower() else "",
+            "krita_filter_gradientmap" if "gradient" in fallback_text.lower() else "",
+            "krita_filter_gradient_map" if "gradient" in fallback_text.lower() else "",
+            "krita_filter_colortoalpha" if "alpha" in fallback_text.lower() else "",
+            "krita_filter_color_to_alpha" if "alpha" in fallback_text.lower() else "",
+            "krita_filter_gaussian_blur" if "blur" in fallback_text.lower() else "",
+            "krita_filter_blur" if "blur" in fallback_text.lower() else "",
+            "krita_filter_sharpen" if "sharpen" in fallback_text.lower() else "",
+            "krita_filter_gaussian_high_pass" if "high" in fallback_text.lower() else "",
         ]
 
         for cid in candidates:
@@ -94,7 +103,7 @@ class FiltersPieMenuExtension(Extension):
             if search_target and (search_target in act_text or act_text in search_target):
                 act.trigger()
                 return True
-            if action_id.lower() in act_id:
+            if raw_id and raw_id in act_id:
                 act.trigger()
                 return True
         return False
