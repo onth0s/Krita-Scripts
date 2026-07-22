@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ActionCollection version="2" name="Scripts">
+    <Actions category="Scripts">
+        <text>Philosophical Pie Menu</text>
+        <Action name="trigger_pie_menu">
+            <icon></icon>
+            <text>Philosophical Pie Menu</text>
+            <whatsThis>Opens Blender-style radial Pie Menu at mouse cursor position.</whatsThis>
+            <toolTip>Open Pie Menu</toolTip>
+            <iconText>PieMenu</iconText>
+            <activationFlags>10000</activationFlags>
+            <shortcut>Space</shortcut>
+            <isCheckable>false</isCheckable>
+            <statusTip></statusTip>
+        </Action>
+    </Actions>
+</ActionCollection>

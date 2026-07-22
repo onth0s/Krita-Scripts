@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Service
+ServiceTypes=Krita/PythonPlugin
+X-KDE-Library=pie_menu_extension
+X-Python-2-Compatible=false
+Name=Philosophical Pie Menu
+Comment=Blender-style radial pie menu triggered by Space key displaying philosophical quotes.
