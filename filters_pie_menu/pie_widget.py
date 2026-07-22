@@ -9,13 +9,14 @@ class PieMenuWidget(QWidget):
     Supports Space key hold-gesture, F11/Right-Click/Esc interrupt cancellation,
     and circular neutral deadzone.
     """
-    def __init__(self, callbacks, parent=None):
+    def __init__(self, callbacks, items_meta=None, parent=None):
         super().__init__(parent, Qt.FramelessWindowHint | Qt.Popup | Qt.NoDropShadowWindowHint)
         self.setObjectName("PieMenuWidget")
         self.setAttribute(Qt.WA_TranslucentBackground, True)
         self.setAttribute(Qt.WA_DeleteOnClose, True)
         self.setMouseTracking(True)
         self.callbacks = callbacks
+        self.items_meta = items_meta or {}
         self.buttons = {}
         self.active_direction = None
         self.is_interrupted = False
@@ -65,19 +66,19 @@ class PieMenuWidget(QWidget):
             'NW': (center_x - 220,        center_y - 110),  # North-West
         }
 
-        items = [
-            ('N',  "HSV Adjustment...",      self.callbacks.get('N')),
-            ('NE', "Color Curves...",        self.callbacks.get('NE')),
-            ('E',  "Color Balance...",       self.callbacks.get('E')),
-            ('SE', "Slope, Offset, Power...", self.callbacks.get('SE')),
-            ('S',  "Desaturate...",          self.callbacks.get('S')),
-            ('SW', "Auto Contrast",          self.callbacks.get('SW')),
-            ('W',  "Levels...",              self.callbacks.get('W')),
-            ('NW', "Invert",                 self.callbacks.get('NW')),
-        ]
+        default_labels = {
+            'N': "HSV Adjustment...", 'NE': "Color Curves...", 'E': "Color Balance...",
+            'SE': "Slope, Offset, Power...", 'S': "Desaturate...", 'SW': "Auto Contrast",
+            'W': "Levels...", 'NW': "Invert"
+        }
 
-        for key, text, cb in items:
-            x, y = positions[key]
+        for key, (x, y) in positions.items():
+            if key in self.items_meta:
+                text = self.items_meta[key][0]
+            else:
+                text = default_labels.get(key, key)
+
+            cb = self.callbacks.get(key)
             btn = QPushButton(text, self)
             btn.setGeometry(x, y, btn_w, btn_h)
             btn.setMouseTracking(True)

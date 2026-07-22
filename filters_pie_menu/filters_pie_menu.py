@@ -1,10 +1,14 @@
+import os
+import json
 from krita import Extension, Krita
 from .pie_widget import PieMenuWidget
+from .config_dialog import SectorConfigDialog
 
 class FiltersPieMenuExtension(Extension):
     def __init__(self, parent):
         super().__init__(parent)
         self.pie_widget = None
+        self.config_path = os.path.join(os.path.dirname(__file__), 'config.json')
 
     def setup(self):
         pass
@@ -12,6 +16,28 @@ class FiltersPieMenuExtension(Extension):
     def createActions(self, window):
         action = window.createAction("trigger_filters_pie_menu", "Filters Pie Menu", "tools/scripts")
         action.triggered.connect(self.show_pie_menu)
+
+        cfg_action = window.createAction("configure_filters_pie_menu", "Configure Filters Pie Menu", "tools/scripts")
+        cfg_action.triggered.connect(self.open_config_dialog)
+
+    def load_config(self):
+        if os.path.exists(self.config_path):
+            try:
+                with open(self.config_path, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+            except Exception:
+                pass
+        # Default layout fallback
+        return {
+            "N":  { "label": "HSV Adjustment...",       "action_id": "hsv_adjustment" },
+            "NE": { "label": "Color Curves...",         "action_id": "color_curves" },
+            "E":  { "label": "Color Balance...",        "action_id": "color_balance" },
+            "SE": { "label": "Slope, Offset, Power...",  "action_id": "slope_offset_power" },
+            "S":  { "label": "Desaturate...",           "action_id": "desaturate" },
+            "SW": { "label": "Auto Contrast",           "action_id": "auto_contrast" },
+            "W":  { "label": "Levels...",               "action_id": "levels" },
+            "NW": { "label": "Invert",                  "action_id": "invert" }
+        }
 
     def show_pie_menu(self):
         try:
@@ -21,18 +47,25 @@ class FiltersPieMenuExtension(Extension):
         except (RuntimeError, ReferenceError):
             self.pie_widget = None
 
-        callbacks = {
-            'N':  lambda: self.trigger_action('hsv_adjustment', "HSV Adjustment..."),
-            'NE': lambda: self.trigger_action('color_curves', "Color Adjustment curves..."),
-            'E':  lambda: self.trigger_action('color_balance', "Color Balance..."),
-            'SE': lambda: self.trigger_action('slope_offset_power', "Slope, Offset, Power..."),
-            'S':  lambda: self.trigger_action('desaturate', "Desaturate..."),
-            'SW': lambda: self.trigger_action('auto_contrast', "Auto Contrast"),
-            'W':  lambda: self.trigger_action('levels', "Levels..."),
-            'NW': lambda: self.trigger_action('invert', "Invert"),
-        }
-        self.pie_widget = PieMenuWidget(callbacks)
+        config = self.load_config()
+        callbacks = {}
+        items_meta = {}
+
+        for code, data in config.items():
+            act_id = data.get('action_id', '')
+            label = data.get('label', '')
+            items_meta[code] = (label, act_id)
+            callbacks[code] = self.make_trigger_callback(act_id, label)
+
+        self.pie_widget = PieMenuWidget(callbacks, items_meta=items_meta)
         self.pie_widget.show_at_cursor()
+
+    def make_trigger_callback(self, action_id, fallback_text):
+        return lambda: self.trigger_action(action_id, fallback_text)
+
+    def open_config_dialog(self):
+        dlg = SectorConfigDialog(self.config_path, on_save_callback=None)
+        dlg.exec_()
 
     def trigger_action(self, action_id, fallback_text):
         app = Krita.instance()
@@ -41,7 +74,7 @@ class FiltersPieMenuExtension(Extension):
             action.trigger()
             return True
 
-        # Fallback: search registered actions by name or label text
+        # Fallback search by label text
         search_target = fallback_text.replace('.', '').replace('&', '').strip().lower()
         for act in app.actions():
             act_text = act.text().replace('&', '').replace('.', '').strip().lower()
