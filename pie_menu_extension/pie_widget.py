@@ -7,7 +7,9 @@ class PieMenuWidget(QWidget):
     Blender-style radial Pie Menu widget displayed at the mouse position.
     """
     def __init__(self, callbacks, parent=None):
-        super().__init__(parent, Qt.FramelessWindowHint | Qt.Popup | Qt.WA_TranslucentBackground)
+        super().__init__(parent, Qt.FramelessWindowHint | Qt.Popup)
+        self.setObjectName("PieMenuWidget")
+        self.setAttribute(Qt.WA_TranslucentBackground, True)
         self.setAttribute(Qt.WA_DeleteOnClose, True)
         self.callbacks = callbacks
         self.init_ui()
@@ -18,6 +20,9 @@ class PieMenuWidget(QWidget):
 
         # Style definition for Blender-esque dark rounded pie slice buttons
         btn_style = """
+            QWidget#PieMenuWidget {
+                background: transparent;
+            }
             QPushButton {
                 background-color: rgba(36, 40, 44, 230);
                 color: #E2E8F0;
