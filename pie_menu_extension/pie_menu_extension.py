@@ -15,6 +15,9 @@ class PieMenuExtension(Extension):
         action.triggered.connect(self.show_pie_menu)
 
     def show_pie_menu(self):
+        if self.pie_widget is not None and self.pie_widget.isVisible():
+            return
+
         callbacks = {
             'north': self.func_rousseau,
             'east':  self.func_descartes,

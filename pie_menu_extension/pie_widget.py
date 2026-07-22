@@ -102,6 +102,10 @@ class PieMenuWidget(QWidget):
                 break
 
     def keyReleaseEvent(self, event):
+        if event.isAutoRepeat():
+            event.ignore()
+            return
+
         # When Space (or Return/Enter) is released, execute highlighted option if hovering
         if event.key() in (Qt.Key_Space, Qt.Key_Return, Qt.Key_Enter):
             self.trigger_hovered_action()
@@ -109,6 +113,10 @@ class PieMenuWidget(QWidget):
             super().keyReleaseEvent(event)
 
     def keyPressEvent(self, event):
+        if event.isAutoRepeat():
+            event.ignore()
+            return
+
         if event.key() == Qt.Key_Escape:
             self.cleanup_and_close()
         else:
