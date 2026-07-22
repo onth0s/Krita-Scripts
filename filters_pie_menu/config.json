@@ -1,10 +1,34 @@
 {
-  "N":  { "label": "HSV Adjustment...",       "action_id": "krita_filter_hsvadjustment" },
-  "NE": { "label": "Color Curves...",         "action_id": "krita_filter_perchannel" },
-  "E":  { "label": "Color Balance...",        "action_id": "krita_filter_colorbalance" },
-  "SE": { "label": "Slope, Offset, Power...",  "action_id": "krita_filter_slope_offset_power" },
-  "S":  { "label": "Desaturate...",           "action_id": "krita_filter_desaturate" },
-  "SW": { "label": "Auto Contrast",           "action_id": "krita_filter_autocontrast" },
-  "W":  { "label": "Levels...",               "action_id": "krita_filter_levels" },
-  "NW": { "label": "Invert",                  "action_id": "krita_filter_invert" }
+  "N": {
+    "label": "HSV Adjustment...",
+    "action_id": "krita_filter_hsvadjustment"
+  },
+  "NE": {
+    "label": "Color Curves...",
+    "action_id": "krita_filter_perchannel"
+  },
+  "E": {
+    "label": "Levels...",
+    "action_id": "krita_filter_levels"
+  },
+  "SE": {
+    "label": "Sharpen...",
+    "action_id": "krita_filter_sharpen"
+  },
+  "S": {
+    "label": "Desaturate...",
+    "action_id": "krita_filter_desaturate"
+  },
+  "SW": {
+    "label": "Gaussian Blur...",
+    "action_id": "krita_filter_gaussian_blur"
+  },
+  "W": {
+    "label": "Color to Alpha...",
+    "action_id": "krita_filter_colortoalpha"
+  },
+  "NW": {
+    "label": "Invert",
+    "action_id": "krita_filter_invert"
+  }
 }
