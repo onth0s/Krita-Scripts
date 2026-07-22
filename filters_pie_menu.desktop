@@ -3,5 +3,6 @@ Type=Service
 ServiceTypes=Krita/PythonPlugin
 X-KDE-Library=filters_pie_menu
 X-Python-2-Compatible=false
+X-Krita-Manual=manual.html
 Name=Filters Pie Menu
 Comment=Blender-style radial Pie Menu mapped to Space key for quick access to Krita adjustment filters.

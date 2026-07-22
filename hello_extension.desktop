@@ -3,5 +3,6 @@ Type=Service
 ServiceTypes=Krita/PythonPlugin
 X-KDE-Library=hello_extension
 X-Python-2-Compatible=false
+X-Krita-Manual=manual.html
 Name=Hello World Extension
 Comment=Minimal dummy extension demonstrating menu script actions in Krita.
