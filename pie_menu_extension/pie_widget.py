@@ -159,10 +159,18 @@ class PieMenuWidget(QWidget):
             event.ignore()
             return
 
-        if event.key() == Qt.Key_Escape:
+        # F11 or Escape interrupts/cancels the Pie call
+        if event.key() in (Qt.Key_F11, Qt.Key_Escape):
             self.cleanup_and_close()
         else:
             super().keyPressEvent(event)
+
+    def mousePressEvent(self, event):
+        # Right Click interrupts/cancels the Pie call like Blender
+        if event.button() == Qt.RightButton:
+            self.cleanup_and_close()
+        else:
+            super().mousePressEvent(event)
 
     def trigger_selected_action(self):
         self.update_selection_from_mouse()
