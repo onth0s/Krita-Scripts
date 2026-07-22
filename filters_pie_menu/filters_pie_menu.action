@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ActionCollection version="2" name="Scripts">
     <Actions category="Scripts">
-        <text>Philosophical Pie Menu</text>
-        <Action name="trigger_pie_menu">
+        <text>Filters Pie Menu</text>
+        <Action name="trigger_filters_pie_menu">
             <icon></icon>
-            <text>Philosophical Pie Menu</text>
-            <whatsThis>Opens Blender-style radial Pie Menu at mouse cursor position.</whatsThis>
-            <toolTip>Open Pie Menu</toolTip>
-            <iconText>PieMenu</iconText>
+            <text>Filters Pie Menu</text>
+            <whatsThis>Opens 8-sector Blender-style radial Filters Pie Menu for Krita adjustment filters.</whatsThis>
+            <toolTip>Open Filters Pie Menu</toolTip>
+            <iconText>FiltersPie</iconText>
             <activationFlags>10000</activationFlags>
             <shortcut>Space</shortcut>
             <isCheckable>false</isCheckable>

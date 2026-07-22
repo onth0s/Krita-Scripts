@@ -1,0 +1,5 @@
+from krita import Krita
+from .filters_pie_menu import FiltersPieMenuExtension
+
+app = Krita.instance()
+app.addExtension(FiltersPieMenuExtension(app))
