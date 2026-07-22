@@ -15,8 +15,11 @@ class PieMenuExtension(Extension):
         action.triggered.connect(self.show_pie_menu)
 
     def show_pie_menu(self):
-        if self.pie_widget is not None and self.pie_widget.isVisible():
-            return
+        try:
+            if self.pie_widget is not None and self.pie_widget.isVisible():
+                return
+        except (RuntimeError, ReferenceError):
+            self.pie_widget = None
 
         callbacks = {
             'north': self.func_rousseau,
