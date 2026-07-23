@@ -70,13 +70,12 @@ def execute_sanitize_group():
         else:
             top = children[0]
 
-        doc.setActiveNode(top)
-
         # Renumber remaining layers to 1..N
         children = group_layer.childNodes()
         for idx, child in enumerate(children, start=1):
             child.setName(str(idx))
 
+        doc.setActiveNode(top)
         doc.refreshProjection()
         log_info("sanitize_group", f"Sanitized {len(children)} child layers in group '{group_layer.name()}'")
     except Exception as e:
