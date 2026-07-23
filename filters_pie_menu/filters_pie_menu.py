@@ -42,10 +42,12 @@ class FiltersPieMenuExtension(Extension):
     def show_pie_menu(self):
         try:
             if self.pie_widget is not None:
-                if self.pie_widget.isVisible() or getattr(self.pie_widget, 'is_interrupted', False):
+                if self.pie_widget.isVisible():
                     return
         except (RuntimeError, ReferenceError):
             self.pie_widget = None
+
+        self.pie_widget = None
 
         config = self.load_config()
         callbacks = {}
