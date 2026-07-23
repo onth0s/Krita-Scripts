@@ -69,19 +69,22 @@ def execute_sanitize_group():
             if not _is_protected(child) and _is_empty_paint_layer(child):
                 child.remove()
 
-        # ── 2. Add a fresh empty paint layer ─────────────────────────────────
-        fresh = doc.createNode("_top_", "paintlayer")
-        group_layer.addChildNode(fresh, None)
-
-        # ── 3. Find B&W layer if present and place DIRECTLY ABOVE fresh (absolute TOP) ──
+        # ── 2. Find B&W layer if present ──────────────────────────────────────
         bw_node = None
         for child in group_layer.childNodes():
             if child.name().strip().upper() == "B&W":
                 bw_node = child
                 break
 
+        # ── 3. Place B&W at ABSOLUTE TOP, then fresh directly below it ────────
+        # addChildNode(node, above) inserts node BELOW `above`.
+        # None means nothing is above → node goes to the very top.
+        fresh = doc.createNode("_top_", "paintlayer")
         if bw_node:
-            group_layer.addChildNode(bw_node, fresh)
+            group_layer.addChildNode(bw_node, None)   # B&W → absolute top
+            group_layer.addChildNode(fresh, bw_node)  # fresh → directly below B&W
+        else:
+            group_layer.addChildNode(fresh, None)     # fresh → absolute top
 
         # ── 4. Renumber non-protected layers bottom-to-top (1, 2, 3 … N) ─────
         counter = 1
