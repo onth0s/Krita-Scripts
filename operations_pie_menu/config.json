@@ -1,7 +1,7 @@
 {
   "N": {
-    "label": "Stub North",
-    "action_id": "op_stub_north"
+    "label": "Refine Sketch",
+    "action_id": "op_refine_sketch"
   },
   "NE": {
     "label": "Stub North East",

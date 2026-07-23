@@ -30,7 +30,7 @@ class OperationsPieMenuExtension(Extension):
             except Exception:
                 pass
         return {
-            "N":  { "label": "Stub North",       "action_id": "op_stub_north" },
+            "N":  { "label": "Refine Sketch",    "action_id": "op_refine_sketch" },
             "NE": { "label": "Stub North East",  "action_id": "op_stub_ne" },
             "E":  { "label": "Stub East",        "action_id": "op_stub_east" },
             "SE": { "label": "B&W Preview",        "action_id": "op_bw_preview" },
@@ -67,8 +67,14 @@ class OperationsPieMenuExtension(Extension):
                 return True, ""
             return validate
 
-        validators['N'] = check_paint_layer_required("Alpha Lock & Fill")
+        validators['N'] = check_paint_layer_required("Refine Sketch")
         validators['W'] = check_paint_layer_required("Fit Layer")
+
+        def disabled_stub():
+            return False, "Stub operation not configured."
+
+        for code in ['NE', 'E', 'SW', 'NW']:
+            validators[code] = disabled_stub
 
         for code, data in config.items():
             act_id = data.get('action_id', '')
@@ -76,7 +82,7 @@ class OperationsPieMenuExtension(Extension):
             items_meta[code] = (label, act_id)
             if code == 'S' or act_id == 'op_setup_canvas':
                 callbacks[code] = self.setup_canvas_operation
-            elif code == 'N' or act_id == 'op_stub_north':
+            elif code == 'N' or act_id == 'op_refine_sketch' or act_id == 'op_stub_north':
                 callbacks[code] = self.execute_north_operation
             elif code == 'W' or act_id == 'op_stub_west':
                 callbacks[code] = self.execute_west_operation
@@ -194,6 +200,24 @@ class OperationsPieMenuExtension(Extension):
                     black = ManagedColor(doc.colorModel(), doc.colorDepth(), doc.colorProfile())
                     black.setComponents([0.0, 0.0, 0.0, 1.0])
                     view.setForeGroundColor(black)
+                except Exception:
+                    pass
+
+                # 7. Select "0 STD DRW" brush preset
+                try:
+                    resources = app.resources("preset")
+                    preset_to_activate = None
+                    for name, res in resources.items():
+                        if "0 std drw" in name.lower() or name.lower() == "0 std drw":
+                            preset_to_activate = res
+                            break
+                    if not preset_to_activate:
+                        for name, res in resources.items():
+                            if "std drw" in name.lower():
+                                preset_to_activate = res
+                                break
+                    if preset_to_activate:
+                        view.activateResource(preset_to_activate)
                 except Exception:
                     pass
 
