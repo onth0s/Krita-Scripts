@@ -55,6 +55,20 @@ class OperationsPieMenuExtension(Extension):
         items_meta = {}
         validators = {}
 
+        def check_paint_layer_required(action_name):
+            def validate():
+                app = Krita.instance()
+                doc = app.activeDocument()
+                if not doc:
+                    return False, "No active document."
+                node = doc.activeNode()
+                if not node:
+                    return False, "No active layer selected."
+                if node.type() == "grouplayer":
+                    return False, f"{action_name} requires a Paint Layer (Group selected)."
+                return True, ""
+            return validate
+
         def check_valid_layer_for_fit():
             app = Krita.instance()
             doc = app.activeDocument()
