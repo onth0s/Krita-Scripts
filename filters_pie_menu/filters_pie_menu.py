@@ -29,13 +29,13 @@ class FiltersPieMenuExtension(Extension):
                 pass
         # Default layout fallback
         return {
-            "N":  { "label": "HSV Adjustment...",       "action_id": "hsv_adjustment" },
-            "NE": { "label": "Color Curves...",         "action_id": "color_curves" },
-            "E":  { "label": "Color Balance...",        "action_id": "color_balance" },
-            "SE": { "label": "Slope, Offset, Power...",  "action_id": "slope_offset_power" },
-            "S":  { "label": "Desaturate...",           "action_id": "desaturate" },
+            "N":  { "label": "HSV Adjustment",       "action_id": "hsv_adjustment" },
+            "NE": { "label": "Color Curves",         "action_id": "color_curves" },
+            "E":  { "label": "Color Balance",        "action_id": "color_balance" },
+            "SE": { "label": "Slope, Offset, Power",  "action_id": "slope_offset_power" },
+            "S":  { "label": "Desaturate",           "action_id": "desaturate" },
             "SW": { "label": "Auto Contrast",           "action_id": "auto_contrast" },
-            "W":  { "label": "Levels...",               "action_id": "levels" },
+            "W":  { "label": "Levels",               "action_id": "levels" },
             "NW": { "label": "Invert",                  "action_id": "invert" }
         }
 

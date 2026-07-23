@@ -1,30 +1,30 @@
 {
   "N": {
-    "label": "HSV Adjustment...",
+    "label": "HSV Adjustment",
     "action_id": "krita_filter_hsvadjustment"
   },
   "NE": {
-    "label": "Color Curves...",
+    "label": "Color Curves",
     "action_id": "krita_filter_perchannel"
   },
   "E": {
-    "label": "Levels...",
+    "label": "Levels",
     "action_id": "krita_filter_levels"
   },
   "SE": {
-    "label": "Sharpen...",
+    "label": "Sharpen",
     "action_id": "krita_filter_sharpen"
   },
   "S": {
-    "label": "Desaturate...",
+    "label": "Desaturate",
     "action_id": "krita_filter_desaturate"
   },
   "SW": {
-    "label": "Gaussian Blur...",
+    "label": "Gaussian Blur",
     "action_id": "krita_filter_gaussian_blur"
   },
   "W": {
-    "label": "Color to Alpha...",
+    "label": "Color to Alpha",
     "action_id": "krita_filter_colortoalpha"
   },
   "NW": {
