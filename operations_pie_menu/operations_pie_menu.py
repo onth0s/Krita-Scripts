@@ -352,23 +352,11 @@ class OperationsPieMenuExtension(Extension):
             ptr.setsize(sw * sh * 4)
             new_bytes = QByteArray(bytes(ptr))
 
-            # 4. Create new paint layer with same name for full Ctrl+Z undo compatibility
-            parent = active_layer.parentNode()
-            if not parent:
-                parent = doc.rootNode()
+            # 4. Clear old bounds and write scaled pixels in-place on active_layer
+            clear_bytes = QByteArray(b'\x00' * (bw * bh * 4))
+            active_layer.setPixelData(clear_bytes, bx, by, bw, bh)
+            active_layer.setPixelData(new_bytes, target_x, target_y, sw, sh)
 
-            scaled_layer = doc.createNode(active_layer.name(), "paintlayer")
-            scaled_layer.setPixelData(new_bytes, target_x, target_y, sw, sh)
-
-            try:
-                scaled_layer.setAlphaLocked(active_layer.alphaLocked())
-            except Exception:
-                pass
-
-            parent.addChildNode(scaled_layer, active_layer)
-            active_layer.remove()
-
-            doc.setActiveNode(scaled_layer)
             doc.refreshProjection()
         except Exception as e:
             QMessageBox.warning(None, "Operations Pie Menu", f"Failed to fit layer to canvas: {e}")
