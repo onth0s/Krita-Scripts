@@ -21,10 +21,10 @@ def execute_sanitize_group():
     """
     Sanitize Group (NE Operation):
     - Purges unused intermediate empty paint layers.
-    - Guarantees an empty paint layer at the VERY TOP of the group stack.
+    - Guarantees an empty paint layer at the VERY TOP of the group stack (index 0 in childNodes()).
     - Sets that top empty paint layer as the ACTIVE node.
     - Renumbers direct child layers sequentially 1..N (bottom=1, top=N).
-    - Exception: If the bottom-most layer in the group is named "WHITE", it is ignored/preserved.
+    - Exception: If the bottom-most layer in the group is named "WHITE", it is ignored and preserved.
     """
     app = Krita.instance()
     doc = app.activeDocument()
@@ -64,40 +64,46 @@ def execute_sanitize_group():
             b = node_to_check.bounds()
             return b.width() <= 0 or b.height() <= 0
 
-        # Check if bottom-most layer is named "WHITE"
-        has_white_bottom = (len(children) > 0 and children[0].name().strip().upper() == "WHITE")
-        bottom_white_node = children[0] if has_white_bottom else None
-
-        # Topmost layer in panel is the last element in Krita's childNodes()
-        topmost = children[-1]
+        # Note: In Krita's childNodes(), index 0 is the TOP-MOST layer in the UI panel,
+        # and index -1 is the BOTTOM-MOST layer in the UI panel.
+        
+        # Check if the bottom-most layer (children[-1]) is named "WHITE"
+        is_bottom_white = (children[-1].name().strip().upper() == "WHITE")
+        bottom_white_node = children[-1] if is_bottom_white else None
+        topmost_node = children[0]
 
         # Purge intermediate empty paint layers (excluding topmost layer and bottom WHITE layer)
         for child in list(children):
-            if child != topmost and child != bottom_white_node and is_layer_empty(child):
+            if child != topmost_node and child != bottom_white_node and is_layer_empty(child):
                 child.remove()
 
         # Refresh children after cleanup
         children = group_layer.childNodes()
 
-        # Ensure the layer at the VERY TOP is an empty paint layer
-        if not children or not is_layer_empty(children[-1]):
+        # Ensure the layer at the VERY TOP (children[0]) is an empty paint layer
+        if not children or not is_layer_empty(children[0]):
             placeholder = doc.createNode("temp", "paintlayer")
-            # Passing None as second parameter places placeholder at the VERY TOP of group
+            # Passing None as second parameter places placeholder at the VERY TOP of group (index 0)
             group_layer.addChildNode(placeholder, None)
 
-        # Renumber layers sequentially from bottom (1) to top (N), preserving bottom "WHITE" layer name if present
+        # Refresh children after placeholder insertion
         children = group_layer.childNodes()
-        has_white_bottom = (len(children) > 0 and children[0].name().strip().upper() == "WHITE")
 
-        idx = 1
-        for child in children:
-            if has_white_bottom and child == children[0]:
-                continue  # Keep original name "WHITE"
+        # Check if bottom-most layer is named "WHITE"
+        is_bottom_white = (children[-1].name().strip().upper() == "WHITE")
+
+        # Separate non-WHITE layers from bottom WHITE layer
+        if is_bottom_white:
+            non_white_layers = children[:-1]
+        else:
+            non_white_layers = children
+
+        # Renumber non-WHITE layers from bottom to top (1..N)
+        for idx, child in enumerate(reversed(non_white_layers), start=1):
             child.setName(str(idx))
-            idx += 1
 
-        # Set the layer at the VERY TOP (children[-1]) as the active node
-        top_node = children[-1]
+        # Set the layer at the VERY TOP (children[0]) as the active node
+        top_node = children[0]
         doc.setActiveNode(top_node)
         doc.refreshProjection()
 
