@@ -54,19 +54,21 @@ def execute_sanitize_group():
             b = node.bounds()
             return b.width() <= 0 or b.height() <= 0
 
-        # Ensure an empty paint layer sits at the top of the group
-        top = children[0]
-        if not is_layer_empty(top):
-            top = doc.createNode("temp", "paintlayer")
-            group_layer.addChildNode(top, children[0])
-            log_info("sanitize_group", "Created new empty paint layer at top of group.")
-
-        # Remove all empty layers except the top one (reverse for safe index removal)
-        for child in reversed(children):
-            if child == top:
-                continue
+        # Remove all empty layers
+        for child in reversed(group_layer.childNodes()):
             if is_layer_empty(child):
                 child.remove()
+
+        # Re-fetch children after removal
+        children = group_layer.childNodes()
+
+        # Ensure the top layer is an empty paint layer
+        if not children or not is_layer_empty(children[0]):
+            placeholder = doc.createNode("temp", "paintlayer")
+            group_layer.addChildNode(placeholder, children[0] if children else None)
+            top = placeholder
+        else:
+            top = children[0]
 
         doc.setActiveNode(top)
 
