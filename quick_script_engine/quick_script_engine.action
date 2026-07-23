@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ActionCollection version="2" name="Scripts">
+    <Actions category="Scripts">
+        <text>Quick Script Engine</text>
+        <Action name="create_incremental_layer_action">
+            <icon></icon>
+            <text>Create Incremental Layer</text>
+            <whatsThis>Creates a new paint layer directly above the active layer with an incremented integer name.</whatsThis>
+            <toolTip>Create Incremental Layer</toolTip>
+            <iconText>NewIncLayer</iconText>
+            <activationFlags>00000</activationFlags>
+            <shortcut></shortcut>
+            <isCheckable>false</isCheckable>
+            <statusTip></statusTip>
+        </Action>
+    </Actions>
+</ActionCollection>

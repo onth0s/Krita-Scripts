@@ -45,8 +45,8 @@ class PieMenuWidget(QWidget):
                 self.sector_states[key] = (True, "")
 
     def init_ui(self):
-        # 480x480 widget area with (240, 240) center
-        self.setFixedSize(480, 480)
+        # 520x520 widget area with (260, 260) center
+        self.setFixedSize(520, 520)
 
         obj_name = self.objectName()
         accent = QColor(self.accent_color)
@@ -87,19 +87,19 @@ class PieMenuWidget(QWidget):
         """
         self.setStyleSheet(btn_style)
 
-        center_x, center_y = 240, 240
+        center_x, center_y = 260, 260
         btn_w, btn_h = 150, 36
 
-        # 8 Directional Positions relative to center (240, 240)
+        # 8 Directional Positions relative to center (260, 260)
         positions = {
             'N':  (center_x - btn_w // 2, center_y - 150),  # North
-            'NE': (center_x + 70,         center_y - 110),  # North-East
-            'E':  (center_x + 80,         center_y - btn_h // 2), # East
-            'SE': (center_x + 70,         center_y + 74),   # South-East
+            'NE': (center_x + 75,         center_y - 95),   # North-East
+            'E':  (center_x + 95,         center_y - btn_h // 2), # East
+            'SE': (center_x + 75,         center_y + 59),   # South-East
             'S':  (center_x - btn_w // 2, center_y + 114),  # South
-            'SW': (center_x - 220,        center_y + 74),   # South-West
-            'W':  (center_x - 230,        center_y - btn_h // 2), # West
-            'NW': (center_x - 220,        center_y - 110),  # North-West
+            'SW': (center_x - 225,        center_y + 59),   # South-West
+            'W':  (center_x - 245,        center_y - btn_h // 2), # West
+            'NW': (center_x - 225,        center_y - 95),   # North-West
         }
 
         for key, (x, y) in positions.items():
@@ -143,7 +143,7 @@ class PieMenuWidget(QWidget):
             btn.style().polish(btn)
 
         cursor_pos = QCursor.pos()
-        self.move(cursor_pos.x() - 240, cursor_pos.y() - 240)
+        self.move(cursor_pos.x() - 260, cursor_pos.y() - 260)
         self.show()
         self.activateWindow()
         self.grabKeyboard()
@@ -154,7 +154,7 @@ class PieMenuWidget(QWidget):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
 
-        center = QPoint(240, 240)
+        center = QPoint(260, 260)
         
         # Circular neutral center zone rendering (Radius 26px)
         accent = QColor(self.accent_color)
@@ -178,8 +178,8 @@ class PieMenuWidget(QWidget):
 
     def update_selection_from_mouse(self):
         cursor_pos = self.mapFromGlobal(QCursor.pos())
-        dx = cursor_pos.x() - 240
-        dy = cursor_pos.y() - 240
+        dx = cursor_pos.x() - 260
+        dy = cursor_pos.y() - 260
         dist = math.hypot(dx, dy)
 
         old_direction = self.active_direction

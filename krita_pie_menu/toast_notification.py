@@ -158,15 +158,15 @@ class ToastNotification(QWidget):
         cls._active_toast = toast
         
         toast.adjustSize()
-        margin_x = 20
-        margin_y = 40
+        gap = 20
+        status_bar_h = 28  # clearance for Krita's bottom status bar
         
         left_dock_offset = cls.get_left_dockers_offset()
         
         if parent:
             geo = parent.geometry()
-            pos_x = geo.x() + max(margin_x, left_dock_offset + 12)
-            pos_y = geo.y() + geo.height() - toast.height() - margin_y
+            pos_x = geo.x() + max(gap, left_dock_offset + gap)
+            pos_y = geo.y() + geo.height() - toast.height() - (status_bar_h + gap)
         else:
             from PyQt5.QtWidgets import QApplication
             app_inst = QApplication.instance()
@@ -174,12 +174,12 @@ class ToastNotification(QWidget):
             
             if active_win:
                 win_geo = active_win.geometry()
-                pos_x = win_geo.x() + max(margin_x, left_dock_offset + 12)
-                pos_y = win_geo.y() + win_geo.height() - toast.height() - margin_y
+                pos_x = win_geo.x() + max(gap, left_dock_offset + gap)
+                pos_y = win_geo.y() + win_geo.height() - toast.height() - (status_bar_h + gap)
             else:
                 screen = QApplication.primaryScreen().geometry()
-                pos_x = screen.x() + max(margin_x, left_dock_offset + 12)
-                pos_y = screen.y() + screen.height() - toast.height() - margin_y
+                pos_x = screen.x() + max(gap, left_dock_offset + gap)
+                pos_y = screen.y() + screen.height() - toast.height() - (status_bar_h + gap)
             
         toast.move(pos_x, pos_y)
         toast.show()
