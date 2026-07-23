@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ActionCollection version="2" name="Scripts">
+    <Actions category="Scripts">
+        <text>Conditions Pie Menu</text>
+        <Action name="trigger_conditions_pie_menu">
+            <icon></icon>
+            <text>Conditions Pie Menu</text>
+            <whatsThis>Opens 8-sector Blender-style radial Conditions Pie Menu for workflow condition flags.</whatsThis>
+            <toolTip>Open Conditions Pie Menu</toolTip>
+            <iconText>CondPie</iconText>
+            <activationFlags>00000</activationFlags>
+            <shortcut>Ctrl+Tab</shortcut>
+            <isCheckable>false</isCheckable>
+            <statusTip></statusTip>
+        </Action>
+    </Actions>
+</ActionCollection>

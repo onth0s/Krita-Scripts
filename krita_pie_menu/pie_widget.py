@@ -8,9 +8,10 @@ class PieMenuWidget(QWidget):
     """
     Generic Blender-style 8-sector radial Pie Menu widget for Krita plugins.
     Supports Space key hold-gesture, F11/Right-Click/Esc interrupt cancellation,
-    circular neutral deadzone, accent colors, and greyed-out disabled sector state polling with Toast Notifications.
+    circular neutral deadzone, accent colors, toggle states with underscore/sidescore visual indicators,
+    and greyed-out disabled sector state polling with Toast Notifications.
     """
-    def __init__(self, callbacks, items_meta=None, validators=None, accent_color="#3182CE", object_name="PieMenuWidget", parent=None):
+    def __init__(self, callbacks, items_meta=None, validators=None, toggle_states=None, accent_color="#3182CE", object_name="PieMenuWidget", parent=None):
         super().__init__(parent, Qt.FramelessWindowHint | Qt.Popup | Qt.NoDropShadowWindowHint)
         self.setObjectName(object_name)
         self.setAttribute(Qt.WA_TranslucentBackground, True)
@@ -19,6 +20,7 @@ class PieMenuWidget(QWidget):
         self.callbacks = callbacks
         self.items_meta = items_meta or {}
         self.validators = validators or {}
+        self.toggle_states = toggle_states or {}
         self.accent_color = accent_color
         self.sector_states = {}  # key -> (is_enabled, disabled_reason)
         self.buttons = {}
@@ -81,6 +83,15 @@ class PieMenuWidget(QWidget):
                 color: #CBD5E0;
                 border: 2px solid rgba({accent.red()}, {accent.green()}, {accent.blue()}, 0.6);
             }}
+            QPushButton[toggle_on="true"] {{
+                border-bottom: 4px solid #48BB78;
+                color: #68D391;
+            }}
+            QPushButton[active="true"][toggle_on="true"] {{
+                border-bottom: 4px solid #FFFFFF;
+                background-color: rgba(56, 161, 105, 0.9);
+                color: #FFFFFF;
+            }}
             QPushButton:pressed {{
                 background-color: rgba({accent.red()}, {accent.green()}, {accent.blue()}, 1.0);
             }}
@@ -104,9 +115,17 @@ class PieMenuWidget(QWidget):
 
         for key, (x, y) in positions.items():
             if key in self.items_meta:
-                text = self.items_meta[key][0]
+                base_text = self.items_meta[key][0]
             else:
-                text = key
+                base_text = key
+
+            is_toggle = key in self.toggle_states
+            is_on = self.toggle_states.get(key, False)
+
+            if is_toggle:
+                text = f"_ {base_text} _" if is_on else base_text
+            else:
+                text = base_text
 
             cb = self.callbacks.get(key)
             is_enabled, _ = self.sector_states.get(key, (True, ""))
@@ -116,6 +135,9 @@ class PieMenuWidget(QWidget):
             btn.setMouseTracking(True)
             if not is_enabled:
                 btn.setProperty("disabled_sector", True)
+            if is_toggle:
+                btn.setProperty("is_toggle", True)
+                btn.setProperty("toggle_on", is_on)
 
             if cb or not is_enabled:
                 btn.clicked.connect(self.make_click_handler(key, cb))
@@ -139,6 +161,9 @@ class PieMenuWidget(QWidget):
         for key, btn in self.buttons.items():
             is_enabled, _ = self.sector_states.get(key, (True, ""))
             btn.setProperty("disabled_sector", not is_enabled)
+            if key in self.toggle_states:
+                is_on = self.toggle_states[key]
+                btn.setProperty("toggle_on", is_on)
             btn.style().unpolish(btn)
             btn.style().polish(btn)
 
@@ -174,6 +199,18 @@ class PieMenuWidget(QWidget):
                 painter.setPen(QPen(QColor(113, 128, 150, 200), 2))
                 painter.setBrush(QBrush(QColor(45, 55, 72, 180)))
             painter.drawEllipse(center, 26, 26)
+
+        # Draw visual underscore/sidescore bar for toggle buttons
+        for key, btn in self.buttons.items():
+            if key in self.toggle_states:
+                is_on = self.toggle_states[key]
+                geo = btn.geometry()
+                if is_on:
+                    painter.setPen(QPen(QColor(72, 187, 120, 240), 3))
+                    painter.drawLine(geo.left() + 8, geo.bottom() - 3, geo.right() - 8, geo.bottom() - 3)
+                else:
+                    painter.setPen(QPen(QColor(113, 128, 150, 100), 2))
+                    painter.drawLine(geo.left() + 20, geo.bottom() - 3, geo.right() - 20, geo.bottom() - 3)
 
     def mouseMoveEvent(self, event):
         self.update_selection_from_mouse()

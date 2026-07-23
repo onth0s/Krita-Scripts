@@ -1,0 +1,11 @@
+{
+  "duplicate_reflay": false,
+  "N":  { "label": "Stub North",       "action_id": "cond_stub_n" },
+  "NE": { "label": "Duplicate RefLay", "action_id": "cond_toggle_duplicate_reflay" },
+  "E":  { "label": "Stub East",        "action_id": "cond_stub_e" },
+  "SE": { "label": "Stub South East",  "action_id": "cond_stub_se" },
+  "S":  { "label": "Stub South",       "action_id": "cond_stub_s" },
+  "SW": { "label": "Stub South West",  "action_id": "cond_stub_sw" },
+  "W":  { "label": "Stub West",        "action_id": "cond_stub_w" },
+  "NW": { "label": "Stub North West",  "action_id": "cond_stub_nw" }
+}

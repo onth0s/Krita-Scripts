@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Service
+ServiceTypes=Krita/PythonPlugin
+X-KDE-Library=conditions_pie_menu
+X-Python-2-Compatible=false
+X-Krita-Manual=manual.html
+Name=Conditions Pie Menu
+Comment=Radial Pie Menu for workflow condition toggles and flags mapped to Ctrl+Tab.

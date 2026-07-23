@@ -38,18 +38,26 @@ An 8-sector radial Pie Menu providing canvas and layer workflow operations:
 - **Refine Sketch (North / `N`):**
   1. Enables Alpha Lock on the active layer.
   2. Fills sketch lines with a perceptually distributed random HSL color (`[0-255], 100%, 50%`) using golden-ratio hue stepping.
-  3. Creates a temporary layer above and fills it with neutral gray (`#808080`).
-  4. Sets the temporary layer to `Luminosity` blend mode (`luminize`) and enables `Inherit Alpha`.
-  5. Merges the layer down into the sketch layer.
-  6. Creates a new paint layer directly above using `+1` incremental naming protocol.
-  7. Activates the new layer, switches brush preset to `'0 STD DRW'`, and resets foreground color to black (`#000000`).
+  3. *(Conditional)* If `Duplicate RefLay` flag is enabled, duplicates the layer and merges it down immediately.
+  4. Creates a temporary layer above and fills it with neutral gray (`#808080`).
+  5. Sets the temporary layer to `Luminosity` blend mode (`luminize`) and enables `Inherit Alpha`.
+  6. Merges the layer down into the sketch layer.
+  7. Creates a new paint layer directly above using `+1` incremental naming protocol.
+  8. Activates the new layer, switches brush preset to `'0 STD DRW'`, and resets foreground color to black (`#000000`).
 - **Init Canvas (South / `S`):** Sets up standard canvas layout.
 - **B&W Preview (South East / `SE`):** Toggles or creates a top-level color override layer for value checking.
 - **Fit Layer to Canvas (West / `W`):** Scales/fits active layer bounds to canvas size.
 
 ---
 
-### 3. ⚡ Quick Script Engine (`quick_script_engine`)
+### 3. 🥧 Conditions Pie Menu (`conditions_pie_menu`)
+An 8-sector radial Pie Menu mapped to **`Ctrl+Tab`** for toggling global workflow condition flags:
+- **Duplicate RefLay (North East / `NE`):** Toggles layer duplication step in Refine Sketch OP. Displays visual toggle underscore/sidescore indicator and toast notification.
+- **Stub Sectors (`N`, `E`, `SE`, `S`, `SW`, `W`, `NW`):** Prepared slots for future workflow flags.
+
+---
+
+### 4. ⚡ Quick Script Engine (`quick_script_engine`)
 Workflow automation extension providing utility commands:
 - **Create Incremental Layer:** Parses integer suffix on the active layer name and creates a new paint layer with incremented `+1` name.
 

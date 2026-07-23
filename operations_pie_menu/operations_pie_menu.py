@@ -180,6 +180,39 @@ class OperationsPieMenuExtension(Extension):
         except Exception:
             pass
 
+        # 2b. Conditional step: Duplicate layer and merge immediately if duplicate_reflay flag is enabled
+        try:
+            cond_cfg_path = os.path.join(os.path.dirname(__file__), '..', 'conditions_pie_menu', 'config.json')
+            if os.path.exists(cond_cfg_path):
+                with open(cond_cfg_path, 'r', encoding='utf-8') as f:
+                    cond_cfg = json.load(f)
+                    duplicate_reflay = cond_cfg.get("duplicate_reflay", False)
+            else:
+                duplicate_reflay = False
+        except Exception:
+            duplicate_reflay = False
+
+        if duplicate_reflay:
+            try:
+                dup_node = active_layer.duplicate()
+                parent_node = active_layer.parentNode() or doc.rootNode()
+                parent_node.addChildNode(dup_node, active_layer)
+                doc.setActiveNode(dup_node)
+                doc.refreshProjection()
+                from PyQt5.QtWidgets import QApplication
+                QApplication.processEvents()
+                doc.waitForDone()
+
+                merge_act = app.action("layer_merge_down") or app.action("merge_layer_down") or app.action("merge_layer")
+                if merge_act:
+                    merge_act.trigger()
+                    QApplication.processEvents()
+                    doc.waitForDone()
+                
+                active_layer = doc.activeNode()
+            except Exception:
+                pass
+
         # 3. Create a new layer above
         parent = active_layer.parentNode()
         if not parent:
