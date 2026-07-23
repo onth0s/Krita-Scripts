@@ -88,9 +88,13 @@ class OperationsPieMenuExtension(Extension):
                 node = doc.activeNode()
                 if not node:
                     return False, "No active layer selected."
-                if node.type() != "grouplayer":
-                    return False, f"{action_name} requires a Group Layer."
-                return True, ""
+                # Accept: active node is a group, OR active node's immediate parent is a group
+                if node.type() == "grouplayer":
+                    return True, ""
+                parent = node.parentNode()
+                if parent and parent.type() == "grouplayer":
+                    return True, ""
+                return False, f"{action_name} requires a Group Layer (or a layer inside one)."
             return validate
 
         validators['N'] = check_paint_layer_required("Refine Sketch")
@@ -130,8 +134,9 @@ class OperationsPieMenuExtension(Extension):
     def execute_ne_operation(self):
         """
         North-East ('NE') action — Sanitize Group:
-        Renames all direct child layers inside the active group layer to
-        sequential integers 1..N (bottom-to-top, matching Krita's visual layer order).
+        Renames all direct child layers inside the immediate parent group to
+        sequential integers 1..N (1 = topmost in panel, N = bottommost).
+        Works when the active node is the group itself OR any direct child inside it.
         """
         app = Krita.instance()
         doc = app.activeDocument()
@@ -139,19 +144,30 @@ class OperationsPieMenuExtension(Extension):
             QMessageBox.warning(None, "Operations Pie Menu", "No active document open.")
             return
 
-        group_layer = doc.activeNode()
-        if not group_layer or group_layer.type() != "grouplayer":
-            QMessageBox.warning(None, "Operations Pie Menu", "Sanitize requires an active Group Layer.")
+        node = doc.activeNode()
+        if not node:
+            QMessageBox.warning(None, "Operations Pie Menu", "No active layer selected.")
             return
 
+        # Resolve target group: active node itself, or its immediate parent
+        if node.type() == "grouplayer":
+            group_layer = node
+        else:
+            parent = node.parentNode()
+            if parent and parent.type() == "grouplayer":
+                group_layer = parent
+            else:
+                QMessageBox.warning(None, "Operations Pie Menu", "Sanitize requires a layer inside a Group.")
+                return
+
         # childNodes() returns children top-to-bottom (index 0 = topmost in panel).
-        # Reverse so we number 1 = bottom (oldest) .. N = top (newest), matching Krita visual order.
+        # 1 = top (newest), N = bottom (oldest) — matches reverse-chronological painting order.
         children = group_layer.childNodes()
         if not children:
             QMessageBox.information(None, "Operations Pie Menu", "Group layer has no child layers.")
             return
 
-        for idx, child in enumerate(reversed(children), start=1):
+        for idx, child in enumerate(children, start=1):
             child.setName(str(idx))
 
         doc.refreshProjection()
