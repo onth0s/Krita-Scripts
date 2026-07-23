@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ActionCollection version="2" name="Scripts">
+    <Actions category="Scripts">
+        <text>Operations Pie Menu</text>
+        <Action name="trigger_operations_pie_menu">
+            <icon></icon>
+            <text>Operations Pie Menu</text>
+            <whatsThis>Opens 4-sector Blender-style radial Operations Pie Menu for Krita canvas workflow.</whatsThis>
+            <toolTip>Open Operations Pie Menu</toolTip>
+            <iconText>OpsPie</iconText>
+            <activationFlags>10000</activationFlags>
+            <shortcut>Ctrl+Space</shortcut>
+            <isCheckable>false</isCheckable>
+            <statusTip></statusTip>
+        </Action>
+    </Actions>
+</ActionCollection>

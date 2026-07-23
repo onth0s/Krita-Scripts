@@ -1,0 +1,34 @@
+{
+  "N": {
+    "label": "Stub North",
+    "action_id": "op_stub_north"
+  },
+  "NE": {
+    "label": "Stub North East",
+    "action_id": "op_stub_ne"
+  },
+  "E": {
+    "label": "Stub East",
+    "action_id": "op_stub_east"
+  },
+  "SE": {
+    "label": "Stub South East",
+    "action_id": "op_stub_se"
+  },
+  "S": {
+    "label": "Init Canvas",
+    "action_id": "op_setup_canvas"
+  },
+  "SW": {
+    "label": "Stub South West",
+    "action_id": "op_stub_sw"
+  },
+  "W": {
+    "label": "Fit Layer to Canvas",
+    "action_id": "op_stub_west"
+  },
+  "NW": {
+    "label": "Stub North West",
+    "action_id": "op_stub_nw"
+  }
+}

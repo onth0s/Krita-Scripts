@@ -1,7 +1,7 @@
 import os
 import json
 from krita import Extension, Krita
-from .pie_widget import PieMenuWidget
+from krita_pie_menu import PieMenuWidget
 from .config_dialog import SectorConfigDialog
 
 class FiltersPieMenuExtension(Extension):
@@ -57,7 +57,7 @@ class FiltersPieMenuExtension(Extension):
             items_meta[code] = (label, act_id)
             callbacks[code] = self.make_trigger_callback(act_id, label)
 
-        self.pie_widget = PieMenuWidget(callbacks, items_meta=items_meta)
+        self.pie_widget = PieMenuWidget(callbacks, items_meta=items_meta, object_name="FiltersPieWidget")
         self.pie_widget.show_at_cursor()
 
     def make_trigger_callback(self, action_id, fallback_text):

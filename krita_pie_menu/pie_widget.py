@@ -5,13 +5,13 @@ from PyQt5.QtWidgets import QWidget, QPushButton
 
 class PieMenuWidget(QWidget):
     """
-    Blender-style 8-sector radial Filters Pie Menu widget.
+    Generic Blender-style 8-sector radial Pie Menu widget for Krita plugins.
     Supports Space key hold-gesture, F11/Right-Click/Esc interrupt cancellation,
     and circular neutral deadzone.
     """
-    def __init__(self, callbacks, items_meta=None, parent=None):
+    def __init__(self, callbacks, items_meta=None, object_name="PieMenuWidget", parent=None):
         super().__init__(parent, Qt.FramelessWindowHint | Qt.Popup | Qt.NoDropShadowWindowHint)
-        self.setObjectName("PieMenuWidget")
+        self.setObjectName(object_name)
         self.setAttribute(Qt.WA_TranslucentBackground, True)
         self.setAttribute(Qt.WA_DeleteOnClose, True)
         self.setMouseTracking(True)
@@ -26,11 +26,12 @@ class PieMenuWidget(QWidget):
         # 480x480 widget area with (240, 240) center
         self.setFixedSize(480, 480)
 
-        btn_style = """
-            QWidget#PieMenuWidget {
+        obj_name = self.objectName()
+        btn_style = f"""
+            QWidget#{obj_name} {{
                 background: transparent;
-            }
-            QPushButton {
+            }}
+            QPushButton {{
                 background-color: rgba(36, 40, 44, 235);
                 color: #E2E8F0;
                 border: 2px solid #4A5568;
@@ -39,15 +40,15 @@ class PieMenuWidget(QWidget):
                 font-family: 'Segoe UI', sans-serif;
                 font-size: 12px;
                 font-weight: bold;
-            }
-            QPushButton[active="true"] {
+            }}
+            QPushButton[active="true"] {{
                 background-color: rgba(66, 153, 225, 240);
                 color: #FFFFFF;
                 border: 2px solid #63B3ED;
-            }
-            QPushButton:pressed {
+            }}
+            QPushButton:pressed {{
                 background-color: rgba(49, 130, 206, 255);
-            }
+            }}
         """
         self.setStyleSheet(btn_style)
 
@@ -66,17 +67,11 @@ class PieMenuWidget(QWidget):
             'NW': (center_x - 220,        center_y - 110),  # North-West
         }
 
-        default_labels = {
-            'N': "HSV Adjustment...", 'NE': "Color Curves...", 'E': "Color Balance...",
-            'SE': "Slope, Offset, Power...", 'S': "Desaturate...", 'SW': "Auto Contrast",
-            'W': "Levels...", 'NW': "Invert"
-        }
-
         for key, (x, y) in positions.items():
             if key in self.items_meta:
                 text = self.items_meta[key][0]
             else:
-                text = default_labels.get(key, key)
+                text = key
 
             cb = self.callbacks.get(key)
             btn = QPushButton(text, self)
@@ -107,7 +102,7 @@ class PieMenuWidget(QWidget):
 
         center = QPoint(240, 240)
         
-        # Circular neutral center zone rendering (Radius 30px)
+        # Circular neutral center zone rendering (Radius 26px)
         if self.active_direction is None:
             painter.setPen(QPen(QColor(160, 174, 192, 140), 2))
             painter.setBrush(QBrush(QColor(26, 32, 44, 200)))
