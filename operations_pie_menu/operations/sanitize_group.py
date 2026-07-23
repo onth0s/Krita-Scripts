@@ -20,8 +20,10 @@ def validate_sanitize_group():
 def execute_sanitize_group():
     """
     Sanitize Group (NE Operation):
-    Removes empty layers, ensures an empty paint layer at top, sets it active,
-    then renames all direct child layers to sequential integers 1..N.
+    - Purges unused intermediate empty paint layers.
+    - Guarantees an empty paint layer at the VERY TOP of the group stack.
+    - Sets that top empty paint layer as the ACTIVE node.
+    - Renumbers all direct child layers sequentially 1..N (bottom=1, top=N).
     """
     app = Krita.instance()
     doc = app.activeDocument()
@@ -46,38 +48,49 @@ def execute_sanitize_group():
 
     children = group_layer.childNodes()
     if not children:
-        QMessageBox.information(None, "Operations Pie Menu", "Group layer has no child layers.")
+        # Group is completely empty: create first paint layer at top
+        new_top = doc.createNode("1", "paintlayer")
+        group_layer.addChildNode(new_top, None)
+        doc.setActiveNode(new_top)
+        doc.refreshProjection()
+        log_info("sanitize_group", f"Created initial active layer '1' in empty group '{group_layer.name()}'")
         return
 
     try:
-        def is_layer_empty(node):
-            b = node.bounds()
+        def is_layer_empty(node_to_check):
+            if node_to_check.type() != "paintlayer":
+                return False
+            b = node_to_check.bounds()
             return b.width() <= 0 or b.height() <= 0
 
-        # Remove all empty layers
-        for child in reversed(group_layer.childNodes()):
-            if is_layer_empty(child):
+        # Topmost layer in panel is the last element in Krita's childNodes()
+        topmost = children[-1]
+
+        # Purge intermediate empty paint layers (excluding the topmost layer)
+        for child in list(children):
+            if child != topmost and is_layer_empty(child):
                 child.remove()
 
-        # Re-fetch children after removal
+        # Refresh children after cleanup
         children = group_layer.childNodes()
 
-        # Ensure the top layer is an empty paint layer
-        if not children or not is_layer_empty(children[0]):
+        # Ensure the layer at the VERY TOP is an empty paint layer
+        if not children or not is_layer_empty(children[-1]):
             placeholder = doc.createNode("temp", "paintlayer")
-            group_layer.addChildNode(placeholder, children[0] if children else None)
-            top = placeholder
-        else:
-            top = children[0]
+            # Passing None as second parameter places placeholder at the VERY TOP of group
+            group_layer.addChildNode(placeholder, None)
 
-        # Renumber remaining layers to 1..N
+        # Renumber all direct child layers sequentially from bottom (1) to top (N)
         children = group_layer.childNodes()
         for idx, child in enumerate(children, start=1):
             child.setName(str(idx))
 
-        doc.setActiveNode(top)
+        # Set the layer at the VERY TOP (children[-1]) as the active node
+        top_node = children[-1]
+        doc.setActiveNode(top_node)
         doc.refreshProjection()
-        log_info("sanitize_group", f"Sanitized {len(children)} child layers in group '{group_layer.name()}'")
+
+        log_info("sanitize_group", f"Sanitized group '{group_layer.name()}': {len(children)} layers, active node set to top layer '{top_node.name()}'")
     except Exception as e:
         log_error("sanitize_group", "Error during group sanitization", e)
         QMessageBox.warning(None, "Operations Pie Menu", f"Failed to sanitize group: {e}")
