@@ -3,7 +3,7 @@ from PyQt5.QtWidgets import QMessageBox
 from krita_pie_menu import log_error, log_info, ToastNotification
 
 
-_PROTECTED_NAMES = {"WHITE", "B&W"}
+_PROTECTED_NAMES = {"WHITE", "B&W", "LINES"}
 
 
 def _is_protected(node) -> bool:

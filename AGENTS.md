@@ -232,10 +232,10 @@ if bw_node:
 
 ### 7.3 Protected Layers — Use a Set, Check Before ANY Mutation
 
-Protected layer names (currently `"WHITE"` and `"B&W"`) must be stored in a module-level set and checked by normalising the name **before** any rename or remove call. Never inline the check as a one-off string comparison scattered through the function — it will be missed.
+Protected layer names (currently `"WHITE"`, `"B&W"`, and `"LINES"`) must be stored in a module-level set and checked by normalising the name **before** any rename or remove call. Never inline the check as a one-off string comparison scattered through the function — it will be missed.
 
 ```python
-_PROTECTED_NAMES = {"WHITE", "B&W"}
+_PROTECTED_NAMES = {"WHITE", "B&W", "LINES"}
 
 def _is_protected(node) -> bool:
     return node.name().strip().upper() in _PROTECTED_NAMES
