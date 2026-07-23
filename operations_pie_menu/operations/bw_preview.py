@@ -30,6 +30,7 @@ def execute_bw_preview():
 
     if bw_layer:
         try:
+            bw_layer.setLocked(True)
             bw_layer.setVisible(not bw_layer.visible())
             doc.refreshProjection()
             log_info("bw_preview", f"Toggled B&W layer visibility to {bw_layer.visible()}")
@@ -40,6 +41,7 @@ def execute_bw_preview():
     try:
         bw_layer = doc.createNode("B&W", "paintlayer")
         doc.rootNode().addChildNode(bw_layer, None)
+        bw_layer.setLocked(True)
 
         try:
             bw_layer.setBlendingMode("color")

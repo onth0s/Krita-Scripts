@@ -82,6 +82,7 @@ def execute_sanitize_group():
 
         # ── 4. Re-parent B&W directly ABOVE fresh (absolute TOP of group) ────
         if bw_node:
+            bw_node.setLocked(True)
             bw_node.remove()
             group_layer.addChildNode(bw_node, fresh)
 
