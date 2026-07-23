@@ -40,9 +40,15 @@ for act in app.actions():
 Krita plugins on Windows live in the `pykrita` directory:
 - **PyKrita Directory**: `%APPDATA%\krita\pykrita\` (`C:\Users\<username>\AppData\Roaming\krita\pykrita\`)
 
-> **Windows Dev Tip (No Admin Required)**: Krita does not have a setting to change the search path, but you can create a Directory Junction from Krita's `pykrita` folder directly to your dev repo without administrator privileges:
+> **Windows Dev Tip & New Plugin Deployment (No Admin Required)**: Krita does not have a setting to change the search path. Whenever creating a new plugin in this repository, run the following PowerShell command block to link and register it in Krita:
 > ```powershell
+> # 1. Create Directory Junction from pykrita to repo folder
 > cmd /c mklink /J "$env:APPDATA\krita\pykrita\<plugin_name>" "c:\Users\Leonardo\001\00__DEV\Krita-Scripts\<plugin_name>"
+> 
+> # 2. Deploy desktop manifest and shortcut action XML
+> Copy-Item "<plugin_name>.desktop" "$env:APPDATA\krita\pykrita\" -Force
+> if (!(Test-Path "$env:APPDATA\krita\actions")) { New-Item -ItemType Directory -Path "$env:APPDATA\krita\actions" -Force }
+> Copy-Item "<plugin_name>\<plugin_name>.action" "$env:APPDATA\krita\actions\" -Force
 > ```
 
 ### File Layout
