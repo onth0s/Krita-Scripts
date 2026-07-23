@@ -205,24 +205,27 @@ This is the **opposite of what you might intuit** from "index 0 = first". Do not
 
 ---
 
-### 7.2 `addChildNode(node, above)` — What `above` Actually Means
+### 7.2 `addChildNode(node, above)` — Detaching & Order Semantics
 
 ```python
-group_layer.addChildNode(node, above)
+group_layer.addChildNode(node, reference_node)
 ```
 
-- **`above=None`** → `node` is inserted at the **absolute top** of the stack (nothing above it).
-- **`above=some_node`** → `node` is inserted **directly below `some_node`** in the stack. `some_node` remains above the newly inserted node.
+- If `node` is **already attached** to `group_layer`, calling `addChildNode` is a **no-op** in Krita Libkis! You MUST call `node.remove()` to detach it first before re-inserting it at a new stack position.
+- **`reference_node` parameter**: Inserts `node` directly **ABOVE** `reference_node` in the layer panel.
+- Passing `None` inserts `node` at the top of drawing layers.
 
-The parameter is named "above" because it specifies which existing node will remain **above** the one being inserted — **not** the node to insert above.
-
-**The bug committed twice:** `addChildNode(bw_node, fresh)` was called intending B&W to land above `fresh`, but this placed B&W *below* `fresh` because `fresh` is the node that stays on top. The layer panel confirmed B&W was second from top, not first.
-
-**Correct pattern** — place B&W at absolute top, `fresh` directly below it:
+**Correct pattern** to place `B&W` at the absolute top of the group stack and `fresh` directly below it:
 
 ```python
-group_layer.addChildNode(bw_node, None)   # B&W → absolute top (nothing above it)
-group_layer.addChildNode(fresh, bw_node)  # fresh → directly below B&W
+# 1. Add fresh empty layer to group
+fresh = doc.createNode("_top_", "paintlayer")
+group_layer.addChildNode(fresh, None)
+
+# 2. Detach existing B&W layer and re-parent directly ABOVE fresh
+if bw_node:
+    bw_node.remove()                          # Detach existing node first!
+    group_layer.addChildNode(bw_node, fresh)  # Attach B&W directly ABOVE fresh
 ```
 
 ---

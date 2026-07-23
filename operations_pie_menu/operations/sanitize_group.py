@@ -76,17 +76,16 @@ def execute_sanitize_group():
                 bw_node = child
                 break
 
-        # ── 3. Place B&W at ABSOLUTE TOP, then fresh directly below it ────────
-        # addChildNode(node, above) inserts node BELOW `above`.
-        # None means nothing is above → node goes to the very top.
+        # ── 3. Add fresh empty paint layer at top of drawing stack ────────────
         fresh = doc.createNode("_top_", "paintlayer")
-        if bw_node:
-            group_layer.addChildNode(bw_node, None)   # B&W → absolute top
-            group_layer.addChildNode(fresh, bw_node)  # fresh → directly below B&W
-        else:
-            group_layer.addChildNode(fresh, None)     # fresh → absolute top
+        group_layer.addChildNode(fresh, None)
 
-        # ── 4. Renumber non-protected layers bottom-to-top (1, 2, 3 … N) ─────
+        # ── 4. Re-parent B&W directly ABOVE fresh (absolute TOP of group) ────
+        if bw_node:
+            bw_node.remove()
+            group_layer.addChildNode(bw_node, fresh)
+
+        # ── 5. Renumber non-protected layers bottom-to-top (1, 2, 3 … N) ─────
         counter = 1
         for child in group_layer.childNodes():          # bottom → top
             if _is_protected(child):
@@ -94,7 +93,7 @@ def execute_sanitize_group():
             child.setName(str(counter))
             counter += 1
 
-        # ── 5. Activate the fresh layer (topmost drawing layer below B&W) ────
+        # ── 6. Activate the fresh layer (topmost drawing layer below B&W) ────
         doc.setActiveNode(fresh)
         doc.refreshProjection()
 
