@@ -330,7 +330,7 @@ class OperationsPieMenuExtension(Extension):
             from PyQt5.QtGui import QImage
             from PyQt5.QtCore import Qt, QByteArray
 
-            # 1. Fetch pixel data into a persistent bytearray and create a deep copy QImage
+            # 1. Fetch pixel data into persistent bytearray; Krita returns BGRA (= ARGB32 in-memory on LE)
             raw_bytes = bytearray(active_layer.pixelData(bx, by, bw, bh))
             img = QImage(raw_bytes, bw, bh, bw * 4, QImage.Format_ARGB32).copy()
 
@@ -339,12 +339,17 @@ class OperationsPieMenuExtension(Extension):
             sw = scaled_img.width()
             sh = scaled_img.height()
 
+            # Qt SmoothTransformation internally uses premultiplied alpha (Format_ARGB32_Premultiplied).
+            # Convert back to straight alpha BEFORE extracting bytes, otherwise every color is corrupted.
+            if scaled_img.format() != QImage.Format_ARGB32:
+                scaled_img = scaled_img.convertToFormat(QImage.Format_ARGB32)
+
             target_x = (doc_w - sw) // 2
             target_y = (doc_h - sh) // 2
 
             # 3. Extract scaled bytes safely from QImage
             ptr = scaled_img.constBits()
-            ptr.setsize(scaled_img.byteCount())
+            ptr.setsize(sw * sh * 4)
             new_bytes = QByteArray(bytes(ptr))
 
             # 4. Create new paint layer with same name for full Ctrl+Z undo compatibility
