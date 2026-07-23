@@ -1,5 +1,5 @@
 {
-  "duplicate_reflay": false,
+  "duplicate_reflay": true,
   "N": {
     "label": "Stub North",
     "action_id": "cond_stub_n"

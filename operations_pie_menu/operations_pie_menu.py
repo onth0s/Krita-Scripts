@@ -55,22 +55,18 @@ class OperationsPieMenuExtension(Extension):
         items_meta = {}
         validators = {}
 
-        def check_paint_layer_required(action_name):
-            def validate():
-                app = Krita.instance()
-                doc = app.activeDocument()
-                if not doc:
-                    return False, "No active document."
-                node = doc.activeNode()
-                if not node:
-                    return False, "No active layer selected."
-                if node.type() == "grouplayer":
-                    return False, f"{action_name} requires a Paint Layer (Group selected)."
-                return True, ""
-            return validate
+        def check_valid_layer_for_fit():
+            app = Krita.instance()
+            doc = app.activeDocument()
+            if not doc:
+                return False, "No active document."
+            node = doc.activeNode()
+            if not node:
+                return False, "No active layer selected."
+            return True, ""
 
         validators['N'] = check_paint_layer_required("Refine Sketch")
-        validators['W'] = check_paint_layer_required("Fit Layer")
+        validators['W'] = check_valid_layer_for_fit
 
         def disabled_stub():
             return False, "Stub operation not configured."
@@ -370,7 +366,8 @@ class OperationsPieMenuExtension(Extension):
     def execute_west_operation(self):
         """
         West ('W') action:
-        Fit/Scale active layer content to canvas dimensions while preserving aspect ratio.
+        Fit/Scale active layer (Paint Layer or Group Layer) content to canvas dimensions
+        while preserving aspect ratio.
         Fully undoable (Ctrl+Z compatible).
         """
         app = Krita.instance()
@@ -384,68 +381,99 @@ class OperationsPieMenuExtension(Extension):
             QMessageBox.warning(None, "Operations Pie Menu", "No active layer selected.")
             return
 
-        if active_layer.type() == "grouplayer":
-            QMessageBox.warning(
-                None,
-                "Operations Pie Menu",
-                "Fit Layer operation cannot be run on a Group Layer.\nPlease select a Paint Layer."
-            )
-            return
-
         doc_w = doc.width()
         doc_h = doc.height()
 
         bounds = active_layer.bounds()
-        bx, by, bw, bh = bounds.x(), bounds.y(), bounds.width(), bounds.height()
+        gx, gy, gw, gh = bounds.x(), bounds.y(), bounds.width(), bounds.height()
 
-        if bw <= 0 or bh <= 0:
+        if gw <= 0 or gh <= 0:
             QMessageBox.information(None, "Operations Pie Menu", "Active layer is empty.")
             return
+
+        # Compute scaling factor preserving aspect ratio
+        scale_w = doc_w / gw
+        scale_h = doc_h / gh
+        scale = min(scale_w, scale_h)
+
+        target_gw = max(1, int(gw * scale))
+        target_gh = max(1, int(gh * scale))
+
+        target_gx = (doc_w - target_gw) // 2
+        target_gy = (doc_h - target_gh) // 2
 
         try:
             from PyQt5.QtGui import QImage
             from PyQt5.QtCore import Qt, QByteArray
 
-            # 1. Fetch pixel data into persistent bytearray; Krita returns BGRA (= ARGB32 in-memory on LE)
-            raw_bytes = bytearray(active_layer.pixelData(bx, by, bw, bh))
-            img = QImage(raw_bytes, bw, bh, bw * 4, QImage.Format_ARGB32).copy()
+            if active_layer.type() == "grouplayer":
+                # Collect all child paint layers recursively inside group
+                child_paint_layers = active_layer.findChildNodes("", True, False, "paintlayer")
+                if not child_paint_layers:
+                    QMessageBox.information(None, "Operations Pie Menu", "Group Layer contains no paint layers.")
+                    return
 
-            # 2. Scale preserving aspect ratio smoothly
-            scaled_img = img.scaled(doc_w, doc_h, Qt.KeepAspectRatio, Qt.SmoothTransformation)
-            sw = scaled_img.width()
-            sh = scaled_img.height()
+                for child in child_paint_layers:
+                    cbounds = child.bounds()
+                    cx, cy, cw, ch = cbounds.x(), cbounds.y(), cbounds.width(), cbounds.height()
+                    if cw <= 0 or ch <= 0:
+                        continue
 
-            # Qt SmoothTransformation internally uses premultiplied alpha (Format_ARGB32_Premultiplied).
-            # Convert back to straight alpha BEFORE extracting bytes, otherwise every color is corrupted.
-            if scaled_img.format() != QImage.Format_ARGB32:
-                scaled_img = scaled_img.convertToFormat(QImage.Format_ARGB32)
+                    # Calculate relative coordinates inside group
+                    rel_x = (cx - gx) / gw
+                    rel_y = (cy - gy) / gh
+                    new_cw = max(1, int(cw * scale))
+                    new_ch = max(1, int(ch * scale))
+                    new_cx = target_gx + int(rel_x * target_gw)
+                    new_cy = target_gy + int(rel_y * target_gh)
 
-            target_x = (doc_w - sw) // 2
-            target_y = (doc_h - sh) // 2
+                    raw_bytes = bytearray(child.pixelData(cx, cy, cw, ch))
+                    img = QImage(raw_bytes, cw, ch, cw * 4, QImage.Format_ARGB32).copy()
 
-            # 3. Extract scaled bytes safely from QImage
-            ptr = scaled_img.constBits()
-            ptr.setsize(sw * sh * 4)
-            new_bytes = QByteArray(bytes(ptr))
+                    scaled_img = img.scaled(new_cw, new_ch, Qt.IgnoreAspectRatio, Qt.SmoothTransformation)
+                    if scaled_img.format() != QImage.Format_ARGB32:
+                        scaled_img = scaled_img.convertToFormat(QImage.Format_ARGB32)
 
-            # 4. Create new paint layer with same name for full Ctrl+Z undo compatibility
-            parent = active_layer.parentNode()
-            if not parent:
-                parent = doc.rootNode()
+                    ptr = scaled_img.constBits()
+                    ptr.setsize(new_cw * new_ch * 4)
+                    new_bytes = QByteArray(bytes(ptr))
 
-            scaled_layer = doc.createNode(active_layer.name(), "paintlayer")
-            scaled_layer.setPixelData(new_bytes, target_x, target_y, sw, sh)
+                    # Clear old bounds and set scaled bytes at new coordinates
+                    clear_bytes = b'\x00' * (cw * ch * 4)
+                    child.setPixelData(QByteArray(clear_bytes), cx, cy, cw, ch)
+                    child.setPixelData(new_bytes, new_cx, new_cy, new_cw, new_ch)
 
-            try:
-                scaled_layer.setAlphaLocked(active_layer.alphaLocked())
-            except Exception:
-                pass
+                doc.refreshProjection()
 
-            parent.addChildNode(scaled_layer, active_layer)
-            active_layer.remove()
+            else:
+                # Single Paint Layer scaling (node substitution for Ctrl+Z undo compatibility)
+                raw_bytes = bytearray(active_layer.pixelData(gx, gy, gw, gh))
+                img = QImage(raw_bytes, gw, gh, gw * 4, QImage.Format_ARGB32).copy()
 
-            doc.setActiveNode(scaled_layer)
-            doc.refreshProjection()
+                scaled_img = img.scaled(target_gw, target_gh, Qt.IgnoreAspectRatio, Qt.SmoothTransformation)
+                if scaled_img.format() != QImage.Format_ARGB32:
+                    scaled_img = scaled_img.convertToFormat(QImage.Format_ARGB32)
+
+                ptr = scaled_img.constBits()
+                ptr.setsize(target_gw * target_gh * 4)
+                new_bytes = QByteArray(bytes(ptr))
+
+                parent = active_layer.parentNode() or doc.rootNode()
+
+                scaled_layer = doc.createNode(active_layer.name(), "paintlayer")
+                scaled_layer.setPixelData(new_bytes, target_gx, target_gy, target_gw, target_gh)
+
+                try:
+                    scaled_layer.setAlphaLocked(active_layer.alphaLocked())
+                except Exception:
+                    pass
+
+                parent.addChildNode(scaled_layer, active_layer)
+                active_layer.remove()
+
+                doc.setActiveNode(scaled_layer)
+                doc.refreshProjection()
+
         except Exception as e:
             QMessageBox.warning(None, "Operations Pie Menu", f"Failed to fit layer to canvas: {e}")
 
