@@ -76,13 +76,15 @@ Dockable side panel UI template registered under **Settings → Dockers → Dumm
 Krita expects Python plugins to reside in `%APPDATA%\krita\pykrita\`. On Windows, you can create a **Directory Junction (`mklink /J`)** to link this development repository directly into Krita without requiring administrator privileges:
 
 ```powershell
-# 1. Create junction link for the plugin
+# Create junction links for plugins
 cmd /c mklink /J "$env:APPDATA\krita\pykrita\filters_pie_menu" "c:\Users\Leonardo\001\00__DEV\Krita-Scripts\filters_pie_menu"
+cmd /c mklink /J "$env:APPDATA\krita\pykrita\operations_pie_menu" "c:\Users\Leonardo\001\00__DEV\Krita-Scripts\operations_pie_menu"
+cmd /c mklink /J "$env:APPDATA\krita\pykrita\conditions_pie_menu" "c:\Users\Leonardo\001\00__DEV\Krita-Scripts\conditions_pie_menu"
 
-# 2. Deploy desktop manifest and shortcut action XML
-Copy-Item "filters_pie_menu.desktop" "$env:APPDATA\krita\pykrita\" -Force
+# Deploy desktop manifests and action XML files
+Copy-Item "conditions_pie_menu.desktop" "$env:APPDATA\krita\pykrita\" -Force
 if (!(Test-Path "$env:APPDATA\krita\actions")) { New-Item -ItemType Directory -Path "$env:APPDATA\krita\actions" -Force }
-Copy-Item "filters_pie_menu\filters_pie_menu.action" "$env:APPDATA\krita\actions\" -Force
+Copy-Item "conditions_pie_menu\conditions_pie_menu.action" "$env:APPDATA\krita\actions\" -Force
 ```
 
 > **Note:** Edits made in this workspace sync live to Krita instantly!
