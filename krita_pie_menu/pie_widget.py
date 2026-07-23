@@ -263,7 +263,7 @@ class PieMenuWidget(QWidget):
             btn.style().polish(btn)
 
     def interrupt_and_wait_for_release(self):
-        """Visually hide the menu on interrupt, but keep listening until Space is released."""
+        """Visually hide the menu on interrupt, but keep listening until key release."""
         if not getattr(self, 'is_interrupted', False):
             self.is_interrupted = True
             self.active_direction = None
@@ -274,11 +274,12 @@ class PieMenuWidget(QWidget):
             event.ignore()
             return
 
-        if event.key() in (Qt.Key_Space, Qt.Key_Return, Qt.Key_Enter):
-            if getattr(self, 'is_interrupted', False):
-                self.cleanup_and_close()
-            else:
-                self.trigger_selected_action()
+        if getattr(self, 'is_interrupted', False):
+            self.cleanup_and_close()
+            return
+
+        if event.key() in (Qt.Key_Space, Qt.Key_Tab, Qt.Key_Control, Qt.Key_Alt, Qt.Key_Return, Qt.Key_Enter):
+            self.trigger_selected_action()
         else:
             super().keyReleaseEvent(event)
 
@@ -287,16 +288,21 @@ class PieMenuWidget(QWidget):
             event.ignore()
             return
 
-        # F11 or Escape interrupts the Pie call and waits for Space release
+        # F11 or Escape interrupts the Pie call and waits for release
         if event.key() in (Qt.Key_F11, Qt.Key_Escape):
             self.interrupt_and_wait_for_release()
         else:
             super().keyPressEvent(event)
 
     def mousePressEvent(self, event):
-        # Right Click interrupts the Pie call and waits for Space release
+        # Right Click or Left Click outside effective range interrupts the Pie call and waits for release
         if event.button() == Qt.RightButton:
             self.interrupt_and_wait_for_release()
+        elif event.button() == Qt.LeftButton:
+            if self.active_direction is None:
+                self.interrupt_and_wait_for_release()
+            else:
+                super().mousePressEvent(event)
         else:
             super().mousePressEvent(event)
 
@@ -317,6 +323,7 @@ class PieMenuWidget(QWidget):
                 ToastNotification.show_toast(reason or "Action is disabled in current context.", toast_type="warning")
 
     def cleanup_and_close(self):
+        self.is_interrupted = False
         try:
             self.releaseKeyboard()
         except Exception:

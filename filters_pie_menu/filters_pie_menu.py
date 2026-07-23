@@ -42,7 +42,7 @@ class FiltersPieMenuExtension(Extension):
     def show_pie_menu(self):
         try:
             if self.pie_widget is not None:
-                if self.pie_widget.isVisible():
+                if self.pie_widget.isVisible() or getattr(self.pie_widget, 'is_interrupted', False):
                     return
         except (RuntimeError, ReferenceError):
             self.pie_widget = None
