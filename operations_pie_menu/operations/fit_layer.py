@@ -44,17 +44,24 @@ def execute_fit_layer():
         QMessageBox.information(None, "Operations Pie Menu", "Active layer is empty.")
         return
 
+    keep_ar = _is_keep_aspect_ratio_enabled()
     scale_w = doc_w / gw
     scale_h = doc_h / gh
-    scale = min(scale_w, scale_h)
 
-    target_gw = max(1, int(gw * scale))
-    target_gh = max(1, int(gh * scale))
-
-    target_gx = (doc_w - target_gw) // 2
-    target_gy = (doc_h - target_gh) // 2
-
-    aspect_mode = Qt.KeepAspectRatio if _is_keep_aspect_ratio_enabled() else Qt.IgnoreAspectRatio
+    if keep_ar:
+        scale = min(scale_w, scale_h)
+        target_gw = max(1, int(gw * scale))
+        target_gh = max(1, int(gh * scale))
+        target_gx = (doc_w - target_gw) // 2
+        target_gy = (doc_h - target_gh) // 2
+        aspect_mode = Qt.KeepAspectRatio
+    else:
+        scale = 1.0
+        target_gw = doc_w
+        target_gh = doc_h
+        target_gx = 0
+        target_gy = 0
+        aspect_mode = Qt.IgnoreAspectRatio
 
     try:
         if active_layer.type() == "grouplayer":
@@ -74,8 +81,12 @@ def execute_fit_layer():
 
                 rel_x = (cx - gx) / gw
                 rel_y = (cy - gy) / gh
-                new_cw = max(1, int(cw * scale))
-                new_ch = max(1, int(ch * scale))
+                if keep_ar:
+                    new_cw = max(1, int(cw * scale))
+                    new_ch = max(1, int(ch * scale))
+                else:
+                    new_cw = max(1, int(cw * scale_w))
+                    new_ch = max(1, int(ch * scale_h))
                 new_cx = target_gx + int(rel_x * target_gw)
                 new_cy = target_gy + int(rel_y * target_gh)
 

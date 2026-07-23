@@ -25,11 +25,12 @@
     "action_id": "cond_stub_sw"
   },
   "W": {
-    "label": "Stub West",
-    "action_id": "cond_stub_w"
+    "label": "Keep Aspect Ratio (Fit)",
+    "action_id": "cond_toggle_keep_aspect_ratio"
   },
   "NW": {
     "label": "Stub North West",
     "action_id": "cond_stub_nw"
-  }
+  },
+  "keep_aspect_ratio": false
 }
