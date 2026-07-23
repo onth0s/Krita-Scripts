@@ -143,11 +143,14 @@ class PieMenuWidget(QWidget):
             btn.style().polish(btn)
 
         cursor_pos = QCursor.pos()
+        self.origin_pos = cursor_pos
         self.move(cursor_pos.x() - 260, cursor_pos.y() - 260)
+        self.active_direction = None
+        self.is_interrupted = False
+        self.update_button_highlights()
         self.show()
         self.activateWindow()
         self.grabKeyboard()
-        self.update_selection_from_mouse()
 
     def paintEvent(self, event):
         super().paintEvent(event)
@@ -177,15 +180,19 @@ class PieMenuWidget(QWidget):
         super().mouseMoveEvent(event)
 
     def update_selection_from_mouse(self):
-        cursor_pos = self.mapFromGlobal(QCursor.pos())
-        dx = cursor_pos.x() - 260
-        dy = cursor_pos.y() - 260
+        cursor_pos = QCursor.pos()
+        origin = getattr(self, 'origin_pos', None)
+        if origin is None:
+            origin = self.mapToGlobal(QPoint(260, 260))
+
+        dx = cursor_pos.x() - origin.x()
+        dy = cursor_pos.y() - origin.y()
         dist = math.hypot(dx, dy)
 
         old_direction = self.active_direction
 
-        # Circular neutral deadzone (radius 40px)
-        if dist < 40:
+        # Circular neutral deadzone (radius 45px)
+        if dist < 45:
             self.active_direction = None
         else:
             angle = math.degrees(math.atan2(dy, dx))
