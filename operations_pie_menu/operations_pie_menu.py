@@ -79,13 +79,28 @@ class OperationsPieMenuExtension(Extension):
                 return False, "No active layer selected."
             return True, ""
 
+        def check_group_layer_required(action_name):
+            def validate():
+                app = Krita.instance()
+                doc = app.activeDocument()
+                if not doc:
+                    return False, "No active document."
+                node = doc.activeNode()
+                if not node:
+                    return False, "No active layer selected."
+                if node.type() != "grouplayer":
+                    return False, f"{action_name} requires a Group Layer."
+                return True, ""
+            return validate
+
         validators['N'] = check_paint_layer_required("Refine Sketch")
+        validators['NE'] = check_group_layer_required("Sanitize Group")
         validators['W'] = check_valid_layer_for_fit
 
         def disabled_stub():
             return False, "Stub operation not configured."
 
-        for code in ['NE', 'E', 'SW', 'NW']:
+        for code in ['E', 'SW', 'NW']:
             validators[code] = disabled_stub
 
         for code, data in config.items():
@@ -96,6 +111,8 @@ class OperationsPieMenuExtension(Extension):
                 callbacks[code] = self.setup_canvas_operation
             elif code == 'N' or act_id == 'op_refine_sketch' or act_id == 'op_stub_north':
                 callbacks[code] = self.execute_north_operation
+            elif code == 'NE' or act_id == 'op_sanitize_group':
+                callbacks[code] = self.execute_ne_operation
             elif code == 'W' or act_id == 'op_stub_west':
                 callbacks[code] = self.execute_west_operation
             elif code == 'SE' or act_id == 'op_bw_preview':
@@ -109,6 +126,35 @@ class OperationsPieMenuExtension(Extension):
 
     def make_stub_callback(self, code, label, action_id):
         return lambda: self.execute_stub_action(code, label, action_id)
+
+    def execute_ne_operation(self):
+        """
+        North-East ('NE') action — Sanitize Group:
+        Renames all direct child layers inside the active group layer to
+        sequential integers 1..N (bottom-to-top, matching Krita's visual layer order).
+        """
+        app = Krita.instance()
+        doc = app.activeDocument()
+        if not doc:
+            QMessageBox.warning(None, "Operations Pie Menu", "No active document open.")
+            return
+
+        group_layer = doc.activeNode()
+        if not group_layer or group_layer.type() != "grouplayer":
+            QMessageBox.warning(None, "Operations Pie Menu", "Sanitize requires an active Group Layer.")
+            return
+
+        # childNodes() returns children top-to-bottom (index 0 = topmost in panel).
+        # Reverse so we number 1 = bottom (oldest) .. N = top (newest), matching Krita visual order.
+        children = group_layer.childNodes()
+        if not children:
+            QMessageBox.information(None, "Operations Pie Menu", "Group layer has no child layers.")
+            return
+
+        for idx, child in enumerate(reversed(children), start=1):
+            child.setName(str(idx))
+
+        doc.refreshProjection()
 
     def execute_stub_action(self, code, label, action_id):
         app = Krita.instance()

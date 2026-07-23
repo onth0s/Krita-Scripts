@@ -4,8 +4,8 @@
     "action_id": "op_refine_sketch"
   },
   "NE": {
-    "label": "Stub North East",
-    "action_id": "op_stub_ne"
+    "label": "Sanitize Group",
+    "action_id": "op_sanitize_group"
   },
   "E": {
     "label": "Stub East",
