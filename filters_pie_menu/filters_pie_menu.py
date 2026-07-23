@@ -50,6 +50,22 @@ class FiltersPieMenuExtension(Extension):
         config = self.load_config()
         callbacks = {}
         items_meta = {}
+        validators = {}
+
+        def validate_filter_context():
+            app = Krita.instance()
+            doc = app.activeDocument()
+            if not doc:
+                return False, "No active document."
+            node = doc.activeNode()
+            if not node:
+                return False, "No active layer selected."
+            if node.type() == "grouplayer":
+                return False, "Filters cannot be applied directly to a Group Layer."
+            return True, ""
+
+        for code in config.keys():
+            validators[code] = validate_filter_context
 
         for code, data in config.items():
             act_id = data.get('action_id', '')
@@ -57,7 +73,7 @@ class FiltersPieMenuExtension(Extension):
             items_meta[code] = (label, act_id)
             callbacks[code] = self.make_trigger_callback(act_id, label)
 
-        self.pie_widget = PieMenuWidget(callbacks, items_meta=items_meta, object_name="FiltersPieWidget")
+        self.pie_widget = PieMenuWidget(callbacks, items_meta=items_meta, validators=validators, object_name="FiltersPieWidget")
         self.pie_widget.show_at_cursor()
 
     def make_trigger_callback(self, action_id, fallback_text):
@@ -69,6 +85,15 @@ class FiltersPieMenuExtension(Extension):
 
     def trigger_action(self, action_id, fallback_text):
         app = Krita.instance()
+        doc = app.activeDocument()
+        if doc and doc.activeNode() and doc.activeNode().type() == "grouplayer":
+            from PyQt5.QtWidgets import QMessageBox
+            QMessageBox.warning(
+                None,
+                "Filters Pie Menu",
+                "Filters cannot be applied directly to a Group Layer.\nPlease select a Paint Layer inside the group."
+            )
+            return False
 
         raw_id = action_id.replace("krita_filter_", "")
         candidates = [

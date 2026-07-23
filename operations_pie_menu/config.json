@@ -12,8 +12,8 @@
     "action_id": "op_stub_east"
   },
   "SE": {
-    "label": "Stub South East",
-    "action_id": "op_stub_se"
+    "label": "B&W Preview",
+    "action_id": "op_bw_preview"
   },
   "S": {
     "label": "Init Canvas",

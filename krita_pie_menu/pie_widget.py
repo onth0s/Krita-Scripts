@@ -2,14 +2,15 @@ import math
 from PyQt5.QtCore import Qt, QPoint
 from PyQt5.QtGui import QCursor, QPainter, QPen, QBrush, QColor
 from PyQt5.QtWidgets import QWidget, QPushButton
+from .toast_notification import ToastNotification
 
 class PieMenuWidget(QWidget):
     """
     Generic Blender-style 8-sector radial Pie Menu widget for Krita plugins.
     Supports Space key hold-gesture, F11/Right-Click/Esc interrupt cancellation,
-    and circular neutral deadzone.
+    circular neutral deadzone, and greyed-out disabled sector state polling with Toast Notifications.
     """
-    def __init__(self, callbacks, items_meta=None, object_name="PieMenuWidget", parent=None):
+    def __init__(self, callbacks, items_meta=None, validators=None, object_name="PieMenuWidget", parent=None):
         super().__init__(parent, Qt.FramelessWindowHint | Qt.Popup | Qt.NoDropShadowWindowHint)
         self.setObjectName(object_name)
         self.setAttribute(Qt.WA_TranslucentBackground, True)
@@ -17,10 +18,30 @@ class PieMenuWidget(QWidget):
         self.setMouseTracking(True)
         self.callbacks = callbacks
         self.items_meta = items_meta or {}
+        self.validators = validators or {}
+        self.sector_states = {}  # key -> (is_enabled, disabled_reason)
         self.buttons = {}
         self.active_direction = None
         self.is_interrupted = False
+        self.evaluate_sector_states()
         self.init_ui()
+
+    def evaluate_sector_states(self):
+        directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
+        for key in directions:
+            validator = self.validators.get(key)
+            if validator:
+                try:
+                    res = validator()
+                    if isinstance(res, tuple):
+                        is_enabled, reason = res
+                    else:
+                        is_enabled, reason = bool(res), "Action not available in current context."
+                except Exception as e:
+                    is_enabled, reason = False, f"Action error: {e}"
+                self.sector_states[key] = (is_enabled, reason)
+            else:
+                self.sector_states[key] = (True, "")
 
     def init_ui(self):
         # 480x480 widget area with (240, 240) center
@@ -41,10 +62,20 @@ class PieMenuWidget(QWidget):
                 font-size: 12px;
                 font-weight: bold;
             }}
+            QPushButton[disabled_sector="true"] {{
+                background-color: rgba(26, 30, 34, 180);
+                color: #718096;
+                border: 2px solid #2D3748;
+            }}
             QPushButton[active="true"] {{
                 background-color: rgba(66, 153, 225, 240);
                 color: #FFFFFF;
                 border: 2px solid #63B3ED;
+            }}
+            QPushButton[active="true"][disabled_sector="true"] {{
+                background-color: rgba(74, 85, 104, 180);
+                color: #A0AEC0;
+                border: 2px solid #718096;
             }}
             QPushButton:pressed {{
                 background-color: rgba(49, 130, 206, 255);
@@ -74,20 +105,37 @@ class PieMenuWidget(QWidget):
                 text = key
 
             cb = self.callbacks.get(key)
+            is_enabled, _ = self.sector_states.get(key, (True, ""))
+
             btn = QPushButton(text, self)
             btn.setGeometry(x, y, btn_w, btn_h)
             btn.setMouseTracking(True)
-            if cb:
+            if not is_enabled:
+                btn.setProperty("disabled_sector", True)
+
+            if cb or not is_enabled:
                 btn.clicked.connect(self.make_click_handler(key, cb))
             self.buttons[key] = btn
 
     def make_click_handler(self, key, callback):
         def handler():
+            is_enabled, reason = self.sector_states.get(key, (True, ""))
             self.cleanup_and_close()
-            callback()
+            if is_enabled:
+                if callback:
+                    callback()
+            else:
+                ToastNotification.show_toast(reason or "Action is disabled in current context.")
         return handler
 
     def show_at_cursor(self):
+        self.evaluate_sector_states()
+        for key, btn in self.buttons.items():
+            is_enabled, _ = self.sector_states.get(key, (True, ""))
+            btn.setProperty("disabled_sector", not is_enabled)
+            btn.style().unpolish(btn)
+            btn.style().polish(btn)
+
         cursor_pos = QCursor.pos()
         self.move(cursor_pos.x() - 240, cursor_pos.y() - 240)
         self.show()
@@ -108,8 +156,13 @@ class PieMenuWidget(QWidget):
             painter.setBrush(QBrush(QColor(26, 32, 44, 200)))
             painter.drawEllipse(center, 26, 26)
         else:
-            painter.setPen(QPen(QColor(99, 179, 237, 240), 2))
-            painter.setBrush(QBrush(QColor(49, 130, 206, 180)))
+            is_enabled, _ = self.sector_states.get(self.active_direction, (True, ""))
+            if is_enabled:
+                painter.setPen(QPen(QColor(99, 179, 237, 240), 2))
+                painter.setBrush(QBrush(QColor(49, 130, 206, 180)))
+            else:
+                painter.setPen(QPen(QColor(113, 128, 150, 200), 2))
+                painter.setBrush(QBrush(QColor(45, 55, 72, 180)))
             painter.drawEllipse(center, 26, 26)
 
     def mouseMoveEvent(self, event):
@@ -199,11 +252,16 @@ class PieMenuWidget(QWidget):
     def trigger_selected_action(self):
         self.update_selection_from_mouse()
         target_direction = self.active_direction
+        is_enabled, reason = self.sector_states.get(target_direction, (True, "")) if target_direction else (True, "")
         target_cb = self.callbacks.get(target_direction) if target_direction else None
         
         self.cleanup_and_close()
-        if target_cb:
-            target_cb()
+        if target_direction:
+            if is_enabled:
+                if target_cb:
+                    target_cb()
+            else:
+                ToastNotification.show_toast(reason or "Action is disabled in current context.")
 
     def cleanup_and_close(self):
         try:

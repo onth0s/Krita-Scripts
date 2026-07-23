@@ -8,7 +8,7 @@
             <whatsThis>Opens 4-sector Blender-style radial Operations Pie Menu for Krita canvas workflow.</whatsThis>
             <toolTip>Open Operations Pie Menu</toolTip>
             <iconText>OpsPie</iconText>
-            <activationFlags>10000</activationFlags>
+            <activationFlags>00000</activationFlags>
             <shortcut>Ctrl+Space</shortcut>
             <isCheckable>false</isCheckable>
             <statusTip></statusTip>

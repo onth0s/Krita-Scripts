@@ -33,7 +33,7 @@ class OperationsPieMenuExtension(Extension):
             "N":  { "label": "Stub North",       "action_id": "op_stub_north" },
             "NE": { "label": "Stub North East",  "action_id": "op_stub_ne" },
             "E":  { "label": "Stub East",        "action_id": "op_stub_east" },
-            "SE": { "label": "Stub South East",  "action_id": "op_stub_se" },
+            "SE": { "label": "B&W Preview",        "action_id": "op_bw_preview" },
             "S":  { "label": "Init Canvas",      "action_id": "op_setup_canvas" },
             "SW": { "label": "Stub South West",  "action_id": "op_stub_sw" },
             "W":  { "label": "Fit Layer to Canvas", "action_id": "op_stub_west" },
@@ -51,6 +51,24 @@ class OperationsPieMenuExtension(Extension):
         config = self.load_config()
         callbacks = {}
         items_meta = {}
+        validators = {}
+
+        def check_paint_layer_required(action_name):
+            def validate():
+                app = Krita.instance()
+                doc = app.activeDocument()
+                if not doc:
+                    return False, "No active document."
+                node = doc.activeNode()
+                if not node:
+                    return False, "No active layer selected."
+                if node.type() == "grouplayer":
+                    return False, f"{action_name} requires a Paint Layer (Group selected)."
+                return True, ""
+            return validate
+
+        validators['N'] = check_paint_layer_required("Alpha Lock & Fill")
+        validators['W'] = check_paint_layer_required("Fit Layer")
 
         for code, data in config.items():
             act_id = data.get('action_id', '')
@@ -62,11 +80,13 @@ class OperationsPieMenuExtension(Extension):
                 callbacks[code] = self.execute_north_operation
             elif code == 'W' or act_id == 'op_stub_west':
                 callbacks[code] = self.execute_west_operation
+            elif code == 'SE' or act_id == 'op_bw_preview':
+                callbacks[code] = self.execute_se_operation
             else:
                 callbacks[code] = self.make_stub_callback(code, label, act_id)
 
 
-        self.pie_widget = PieMenuWidget(callbacks, items_meta=items_meta, object_name="OperationsPieWidget")
+        self.pie_widget = PieMenuWidget(callbacks, items_meta=items_meta, validators=validators, object_name="OperationsPieWidget")
         self.pie_widget.show_at_cursor()
 
     def make_stub_callback(self, code, label, action_id):
@@ -104,6 +124,14 @@ class OperationsPieMenuExtension(Extension):
         active_layer = doc.activeNode()
         if not active_layer:
             QMessageBox.warning(None, "Operations Pie Menu", "No active layer selected.")
+            return
+
+        if active_layer.type() == "grouplayer":
+            QMessageBox.warning(
+                None,
+                "Operations Pie Menu",
+                "Alpha Lock & Fill operation cannot be run on a Group Layer.\nPlease select a Paint Layer."
+            )
             return
 
         # 1. Set current layer to Alpha Locked
@@ -185,6 +213,14 @@ class OperationsPieMenuExtension(Extension):
             QMessageBox.warning(None, "Operations Pie Menu", "No active layer selected.")
             return
 
+        if active_layer.type() == "grouplayer":
+            QMessageBox.warning(
+                None,
+                "Operations Pie Menu",
+                "Fit Layer operation cannot be run on a Group Layer.\nPlease select a Paint Layer."
+            )
+            return
+
         from PyQt5.QtCore import QPointF
         doc_w = doc.width()
         doc_h = doc.height()
@@ -195,6 +231,73 @@ class OperationsPieMenuExtension(Extension):
             doc.refreshProjection()
         except Exception as e:
             QMessageBox.warning(None, "Operations Pie Menu", f"Failed to resize layer: {e}")
+
+    def execute_se_operation(self):
+        """
+        South-East ('SE') action:
+        - If 'B&W' layer already exists anywhere in document, toggle its visibility.
+        - Otherwise, create a paint layer named 'B&W' at the very top of the stack,
+          fill it with solid black (#000000), set its blend mode to 'color',
+          and keep the initial layer active.
+        """
+        app = Krita.instance()
+        doc = app.activeDocument()
+        if not doc:
+            QMessageBox.warning(None, "Operations Pie Menu", "No active document open.")
+            return
+
+        initial_layer = doc.activeNode()
+
+        # Find existing 'B&W' layer in document
+        def find_bw_node(node):
+            for child in node.childNodes():
+                if child.name() == "B&W":
+                    return child
+                found = find_bw_node(child)
+                if found:
+                    return found
+            return None
+
+        bw_layer = find_bw_node(doc.rootNode())
+
+        if bw_layer:
+            # Toggle visibility if it already exists
+            bw_layer.setVisible(not bw_layer.visible())
+            doc.refreshProjection()
+            return
+
+        # Create new 'B&W' layer at top of root node
+        bw_layer = doc.createNode("B&W", "paintlayer")
+        doc.rootNode().addChildNode(bw_layer, None)
+
+        # Set blending mode to 'color'
+        try:
+            bw_layer.setBlendingMode("color")
+        except Exception:
+            pass
+
+        # Fill layer with solid black (#000000)
+        w, h = doc.width(), doc.height()
+        try:
+            sample = bw_layer.pixelData(0, 0, 1, 1)
+            p_len = len(sample) if sample else 4
+            # RGBA format where R=0, G=0, B=0, A=255
+            # For 8-bit channels: b'\x00\x00\x00\xff' for RGBA or fill black bytes
+            if p_len == 4:
+                black_pixel = b'\x00\x00\x00\xff'
+            else:
+                black_pixel = b'\x00' * (p_len - 1) + b'\xff'
+            black_bytes = black_pixel * (w * h)
+            bw_layer.setPixelData(QByteArray(black_bytes), 0, 0, w, h)
+        except Exception:
+            pass
+
+        # Maintain initial active layer selection
+        if initial_layer:
+            doc.setActiveNode(initial_layer)
+
+        doc.refreshProjection()
+
 
 
 
