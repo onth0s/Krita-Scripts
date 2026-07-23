@@ -83,7 +83,10 @@ def execute_init_canvas():
     # 3. Set opacity to 75% (191 / 255)
     base_layer.setOpacity(191)
 
-    # 4. Create Group Layer "LINES"
+    # 4. Lock the WHITE base layer
+    base_layer.setLocked(True)
+
+    # 5. Create Group Layer "LINES"
     lines_group = doc.createGroupLayer("LINES")
     doc.rootNode().addChildNode(lines_group, None)
 
