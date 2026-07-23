@@ -53,6 +53,9 @@ class PieMenuWidget(QWidget):
         obj_name = self.objectName()
         accent = QColor(self.accent_color)
         accent_hex = accent.name()
+        # Lighter tint of the accent used for toggle underscore indicators
+        light_accent = accent.lighter(170)
+        la_r, la_g, la_b = light_accent.red(), light_accent.green(), light_accent.blue()
         
         btn_style = f"""
             QWidget#{obj_name} {{
@@ -84,12 +87,12 @@ class PieMenuWidget(QWidget):
                 border: 2px solid rgba({accent.red()}, {accent.green()}, {accent.blue()}, 0.6);
             }}
             QPushButton[toggle_on="true"] {{
-                border-bottom: 4px solid #48BB78;
-                color: #68D391;
+                border-bottom: 4px solid rgba({la_r}, {la_g}, {la_b}, 220);
+                color: rgba({la_r}, {la_g}, {la_b}, 255);
             }}
             QPushButton[active="true"][toggle_on="true"] {{
-                border-bottom: 4px solid #FFFFFF;
-                background-color: rgba(56, 161, 105, 0.9);
+                border-bottom: 4px solid rgba({la_r}, {la_g}, {la_b}, 255);
+                background-color: rgba({accent.red()}, {accent.green()}, {accent.blue()}, 0.9);
                 color: #FFFFFF;
             }}
             QPushButton:pressed {{
@@ -121,11 +124,7 @@ class PieMenuWidget(QWidget):
 
             is_toggle = key in self.toggle_states
             is_on = self.toggle_states.get(key, False)
-
-            if is_toggle:
-                text = f"_ {base_text} _" if is_on else base_text
-            else:
-                text = base_text
+            text = base_text
 
             cb = self.callbacks.get(key)
             is_enabled, _ = self.sector_states.get(key, (True, ""))
@@ -200,16 +199,18 @@ class PieMenuWidget(QWidget):
                 painter.setBrush(QBrush(QColor(45, 55, 72, 180)))
             painter.drawEllipse(center, 26, 26)
 
-        # Draw visual underscore/sidescore bar for toggle buttons
+        # Draw visual underscore bar for toggle buttons using a lighter tint of the accent
+        accent_color = QColor(self.accent_color)
+        light = accent_color.lighter(170)
         for key, btn in self.buttons.items():
             if key in self.toggle_states:
                 is_on = self.toggle_states[key]
                 geo = btn.geometry()
                 if is_on:
-                    painter.setPen(QPen(QColor(72, 187, 120, 240), 3))
+                    painter.setPen(QPen(QColor(light.red(), light.green(), light.blue(), 230), 3))
                     painter.drawLine(geo.left() + 8, geo.bottom() - 3, geo.right() - 8, geo.bottom() - 3)
                 else:
-                    painter.setPen(QPen(QColor(113, 128, 150, 100), 2))
+                    painter.setPen(QPen(QColor(light.red(), light.green(), light.blue(), 55), 2))
                     painter.drawLine(geo.left() + 20, geo.bottom() - 3, geo.right() - 20, geo.bottom() - 3)
 
     def mouseMoveEvent(self, event):
