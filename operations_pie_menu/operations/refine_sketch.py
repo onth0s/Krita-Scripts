@@ -13,6 +13,12 @@ from krita_pie_menu import (
     set_foreground_black
 )
 
+def is_layer_empty(node):
+    if not node or node.type() != "paintlayer":
+        return False
+    b = node.bounds()
+    return b.width() <= 0 or b.height() <= 0
+
 def validate_refine_sketch():
     app = Krita.instance()
     doc = app.activeDocument()
@@ -23,6 +29,8 @@ def validate_refine_sketch():
         return False, "No active layer selected."
     if node.type() == "grouplayer":
         return False, "Refine Sketch requires a Paint Layer (Group selected)."
+    if is_layer_empty(node):
+        return False, "Active layer is empty."
     return True, ""
 
 def handle_selection_cut_paste(doc, app, active_layer):
@@ -64,7 +72,6 @@ def fill_layer_random_hsl(doc, layer):
     Fills sketch layer line pixels with a perceptually distinct random HSL color.
     Checks color depth and color model before manipulating bytes.
     """
-    # Verify depth/model: pixelData byte manipulation assumes 8-bit BGRA (4 bytes per pixel)
     if doc.colorDepth() != "U8":
         log_warning("refine_sketch", f"Skipping direct byte fill for non-U8 color depth: {doc.colorDepth()}")
         return
@@ -161,12 +168,13 @@ def apply_luminosity_overlay(doc, app, active_layer, view):
 def execute_refine_sketch(duplicate_reflay: bool = False):
     """
     Refine Sketch (North Operation):
-    1. Cuts/pastes selection if present.
-    2. Enables Alpha Lock and fills lines with random HSL.
-    3. Duplicates layer and merges down if `duplicate_reflay` is True.
-    4. Creates neutral gray overlay layer with Luminosity blend mode and merges down.
-    5. Creates a new paint layer directly above (+1 protocol).
-    6. Activates new layer, sets '0 STD DRW' brush, and resets color to black.
+    1. Validates active layer is not empty.
+    2. Cuts/pastes selection if present.
+    3. Enables Alpha Lock and fills lines with random HSL.
+    4. Duplicates layer and merges down if `duplicate_reflay` is True.
+    5. Creates neutral gray overlay layer with Luminosity blend mode and merges down.
+    6. Creates a new paint layer directly above (+1 protocol).
+    7. Activates new layer, sets '0 STD DRW' brush, and resets color to black.
     """
     app = Krita.instance()
     doc = app.activeDocument()
@@ -183,7 +191,15 @@ def execute_refine_sketch(duplicate_reflay: bool = False):
         QMessageBox.warning(
             None,
             "Operations Pie Menu",
-            "Alpha Lock & Fill operation cannot be run on a Group Layer.\nPlease select a Paint Layer."
+            "Refine Sketch operation cannot be run on a Group Layer.\nPlease select a Paint Layer."
+        )
+        return
+
+    if is_layer_empty(active_layer):
+        QMessageBox.warning(
+            None,
+            "Operations Pie Menu",
+            "Refine Sketch cannot be run on an empty layer.\nPlease draw something on the layer first."
         )
         return
 
