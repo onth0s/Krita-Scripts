@@ -86,7 +86,7 @@ class OperationsPieMenuExtension(Extension):
                 callbacks[code] = self.make_stub_callback(code, label, act_id)
 
 
-        self.pie_widget = PieMenuWidget(callbacks, items_meta=items_meta, validators=validators, object_name="OperationsPieWidget")
+        self.pie_widget = PieMenuWidget(callbacks, items_meta=items_meta, validators=validators, accent_color="#805AD5", object_name="OperationsPieWidget")
         self.pie_widget.show_at_cursor()
 
     def make_stub_callback(self, code, label, action_id):

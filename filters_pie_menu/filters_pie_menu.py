@@ -73,7 +73,7 @@ class FiltersPieMenuExtension(Extension):
             items_meta[code] = (label, act_id)
             callbacks[code] = self.make_trigger_callback(act_id, label)
 
-        self.pie_widget = PieMenuWidget(callbacks, items_meta=items_meta, validators=validators, object_name="FiltersPieWidget")
+        self.pie_widget = PieMenuWidget(callbacks, items_meta=items_meta, validators=validators, accent_color="#3182CE", object_name="FiltersPieWidget")
         self.pie_widget.show_at_cursor()
 
     def make_trigger_callback(self, action_id, fallback_text):

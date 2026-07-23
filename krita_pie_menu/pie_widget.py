@@ -8,9 +8,9 @@ class PieMenuWidget(QWidget):
     """
     Generic Blender-style 8-sector radial Pie Menu widget for Krita plugins.
     Supports Space key hold-gesture, F11/Right-Click/Esc interrupt cancellation,
-    circular neutral deadzone, and greyed-out disabled sector state polling with Toast Notifications.
+    circular neutral deadzone, accent colors, and greyed-out disabled sector state polling with Toast Notifications.
     """
-    def __init__(self, callbacks, items_meta=None, validators=None, object_name="PieMenuWidget", parent=None):
+    def __init__(self, callbacks, items_meta=None, validators=None, accent_color="#3182CE", object_name="PieMenuWidget", parent=None):
         super().__init__(parent, Qt.FramelessWindowHint | Qt.Popup | Qt.NoDropShadowWindowHint)
         self.setObjectName(object_name)
         self.setAttribute(Qt.WA_TranslucentBackground, True)
@@ -19,6 +19,7 @@ class PieMenuWidget(QWidget):
         self.callbacks = callbacks
         self.items_meta = items_meta or {}
         self.validators = validators or {}
+        self.accent_color = accent_color
         self.sector_states = {}  # key -> (is_enabled, disabled_reason)
         self.buttons = {}
         self.active_direction = None
@@ -48,14 +49,17 @@ class PieMenuWidget(QWidget):
         self.setFixedSize(480, 480)
 
         obj_name = self.objectName()
+        accent = QColor(self.accent_color)
+        accent_hex = accent.name()
+        
         btn_style = f"""
             QWidget#{obj_name} {{
                 background: transparent;
             }}
             QPushButton {{
-                background-color: rgba(36, 40, 44, 235);
+                background-color: rgba(30, 34, 40, 235);
                 color: #E2E8F0;
-                border: 2px solid #4A5568;
+                border: 2px solid {accent_hex};
                 border-radius: 10px;
                 padding: 6px 12px;
                 font-family: 'Segoe UI', sans-serif;
@@ -63,22 +67,22 @@ class PieMenuWidget(QWidget):
                 font-weight: bold;
             }}
             QPushButton[disabled_sector="true"] {{
-                background-color: rgba(26, 30, 34, 180);
+                background-color: rgba(22, 25, 30, 190);
                 color: #718096;
-                border: 2px solid #2D3748;
+                border: 2px solid rgba({accent.red()}, {accent.green()}, {accent.blue()}, 0.35);
             }}
             QPushButton[active="true"] {{
-                background-color: rgba(66, 153, 225, 240);
+                background-color: rgba({accent.red()}, {accent.green()}, {accent.blue()}, 0.85);
                 color: #FFFFFF;
-                border: 2px solid #63B3ED;
+                border: 2px solid #FFFFFF;
             }}
             QPushButton[active="true"][disabled_sector="true"] {{
-                background-color: rgba(74, 85, 104, 180);
-                color: #A0AEC0;
-                border: 2px solid #718096;
+                background-color: rgba(60, 68, 80, 190);
+                color: #CBD5E0;
+                border: 2px solid rgba({accent.red()}, {accent.green()}, {accent.blue()}, 0.6);
             }}
             QPushButton:pressed {{
-                background-color: rgba(49, 130, 206, 255);
+                background-color: rgba({accent.red()}, {accent.green()}, {accent.blue()}, 1.0);
             }}
         """
         self.setStyleSheet(btn_style)
@@ -120,12 +124,14 @@ class PieMenuWidget(QWidget):
     def make_click_handler(self, key, callback):
         def handler():
             is_enabled, reason = self.sector_states.get(key, (True, ""))
+            label = self.items_meta[key][0] if key in self.items_meta else key
             self.cleanup_and_close()
             if is_enabled:
+                ToastNotification.show_toast(f"Triggered: {label}", toast_type="info")
                 if callback:
                     callback()
             else:
-                ToastNotification.show_toast(reason or "Action is disabled in current context.")
+                ToastNotification.show_toast(reason or "Action is disabled in current context.", toast_type="warning")
         return handler
 
     def show_at_cursor(self):
@@ -151,6 +157,7 @@ class PieMenuWidget(QWidget):
         center = QPoint(240, 240)
         
         # Circular neutral center zone rendering (Radius 26px)
+        accent = QColor(self.accent_color)
         if self.active_direction is None:
             painter.setPen(QPen(QColor(160, 174, 192, 140), 2))
             painter.setBrush(QBrush(QColor(26, 32, 44, 200)))
@@ -158,8 +165,8 @@ class PieMenuWidget(QWidget):
         else:
             is_enabled, _ = self.sector_states.get(self.active_direction, (True, ""))
             if is_enabled:
-                painter.setPen(QPen(QColor(99, 179, 237, 240), 2))
-                painter.setBrush(QBrush(QColor(49, 130, 206, 180)))
+                painter.setPen(QPen(QColor(255, 255, 255, 240), 2))
+                painter.setBrush(QBrush(QColor(accent.red(), accent.green(), accent.blue(), 200)))
             else:
                 painter.setPen(QPen(QColor(113, 128, 150, 200), 2))
                 painter.setBrush(QBrush(QColor(45, 55, 72, 180)))
@@ -254,14 +261,16 @@ class PieMenuWidget(QWidget):
         target_direction = self.active_direction
         is_enabled, reason = self.sector_states.get(target_direction, (True, "")) if target_direction else (True, "")
         target_cb = self.callbacks.get(target_direction) if target_direction else None
+        label = self.items_meta[target_direction][0] if target_direction and target_direction in self.items_meta else target_direction
         
         self.cleanup_and_close()
         if target_direction:
             if is_enabled:
+                ToastNotification.show_toast(f"Triggered: {label}", toast_type="info")
                 if target_cb:
                     target_cb()
             else:
-                ToastNotification.show_toast(reason or "Action is disabled in current context.")
+                ToastNotification.show_toast(reason or "Action is disabled in current context.", toast_type="warning")
 
     def cleanup_and_close(self):
         try:
