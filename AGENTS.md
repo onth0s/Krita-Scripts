@@ -184,3 +184,72 @@ To make custom extension actions searchable and assignable in Krita's **Settings
 
 > **Important**: The `<Action name="my_custom_action_id">` attribute **must exactly match** the action ID string used in `window.createAction("my_custom_action_id", ...)`.
 
+---
+
+## 7. Krita Layer Tree API — Hard-Won Lessons (Do Not Repeat)
+
+These mistakes were made repeatedly in `sanitize_group.py` over multiple attempts. Read this before touching any layer-ordering code.
+
+---
+
+### 7.1 `childNodes()` Ordering
+
+`group_layer.childNodes()` returns children in **bottom-to-top UI order**:
+
+| Index | Position in panel |
+|-------|-------------------|
+| `[0]` | **Bottom-most** layer |
+| `[-1]` | **Top-most** layer |
+
+This is the **opposite of what you might intuit** from "index 0 = first". Do not guess, do not assume, do not "fix" it — this is the confirmed, tested order. Code comments that say otherwise are wrong and have caused real bugs.
+
+---
+
+### 7.2 `addChildNode(node, above)` — What `above` Actually Means
+
+```python
+group_layer.addChildNode(node, above)
+```
+
+- **`above=None`** → `node` is inserted at the **absolute top** of the stack (nothing above it).
+- **`above=some_node`** → `node` is inserted **directly below `some_node`** in the stack. `some_node` remains above the newly inserted node.
+
+The parameter is named "above" because it specifies which existing node will remain **above** the one being inserted — **not** the node to insert above.
+
+**The bug committed twice:** `addChildNode(bw_node, fresh)` was called intending B&W to land above `fresh`, but this placed B&W *below* `fresh` because `fresh` is the node that stays on top. The layer panel confirmed B&W was second from top, not first.
+
+**Correct pattern** — place B&W at absolute top, `fresh` directly below it:
+
+```python
+group_layer.addChildNode(bw_node, None)   # B&W → absolute top (nothing above it)
+group_layer.addChildNode(fresh, bw_node)  # fresh → directly below B&W
+```
+
+---
+
+### 7.3 Protected Layers — Use a Set, Check Before ANY Mutation
+
+Protected layer names (currently `"WHITE"` and `"B&W"`) must be stored in a module-level set and checked by normalising the name **before** any rename or remove call. Never inline the check as a one-off string comparison scattered through the function — it will be missed.
+
+```python
+_PROTECTED_NAMES = {"WHITE", "B&W"}
+
+def _is_protected(node) -> bool:
+    return node.name().strip().upper() in _PROTECTED_NAMES
+```
+
+**The bug:** the name-check code existed and was nominally correct, but the surrounding logic was so confused about ordering that the renumber loop reached the WHITE layer first (it is at index 0 = bottom), named it `"1"`, and then the `is_white_layer` check was vacuous — the layer no longer had the name `"WHITE"`. The fix was not the check itself but ensuring the rest of the function was correct so the check was never bypassed by earlier side effects.
+
+---
+
+### 7.4 Snapshot the Child List Before Mutating the Tree
+
+When removing nodes inside a loop, always snapshot first:
+
+```python
+for child in list(group_layer.childNodes()):   # ← list() snapshot
+    if should_remove(child):
+        child.remove()
+```
+
+Iterating the live result of `childNodes()` while removing nodes causes Krita to skip or double-visit nodes within the same loop.
