@@ -3,7 +3,7 @@ from PyQt5.QtWidgets import QMessageBox
 from krita_pie_menu import log_error, log_info, ToastNotification
 
 
-_PROTECTED_NAMES = {"WHITE"}
+_PROTECTED_NAMES = {"WHITE", "B&W"}
 
 
 def _is_protected(node) -> bool:
@@ -37,9 +37,10 @@ def execute_sanitize_group():
     """
     Sanitize Group (NE Operation):
     - Purges intermediate empty paint layers that are NOT protected.
-    - Ensures a fresh empty paint layer at the top of the group.
+    - Ensures a fresh empty paint layer at the top of drawing layers.
     - Renumbers non-protected layers 1..N (bottom-to-top in the UI).
-    - Protected layer names (e.g. "WHITE") are never renamed or removed.
+    - Protected layer names ("WHITE", "B&W") are never renamed or removed.
+    - "B&W" layer is always kept at the VERY TOP of the group stack.
     """
     app = Krita.instance()
     doc = app.activeDocument()
@@ -64,30 +65,33 @@ def execute_sanitize_group():
 
     try:
         # ── 1. Purge empty non-protected paint layers ────────────────────────
-        # We must iterate a snapshot (list()) — modifying the live tree during
-        # iteration causes Krita to skip or double-visit nodes.
         for child in list(group_layer.childNodes()):
             if not _is_protected(child) and _is_empty_paint_layer(child):
                 child.remove()
 
-        # ── 2. Add a fresh empty paint layer at the absolute top ─────────────
-        # addChildNode(new, above=None) inserts at the TOP of the stack.
+        # ── 2. Add a fresh empty paint layer ─────────────────────────────────
         fresh = doc.createNode("_top_", "paintlayer")
         group_layer.addChildNode(fresh, None)
 
-        # ── 3. Renumber non-protected layers bottom-to-top (1, 2, 3 … N) ─────
-        # childNodes() order: index 0 = bottom of the UI panel,
-        #                     index -1 = top of the UI panel.
-        # We name them so the bottom-most non-protected layer becomes "1" and
-        # the topmost non-protected layer becomes "N".
+        # ── 3. Find B&W layer if present and move to absolute TOP ────────────
+        bw_node = None
+        for child in group_layer.childNodes():
+            if child.name().strip().upper() == "B&W":
+                bw_node = child
+                break
+
+        if bw_node:
+            group_layer.addChildNode(bw_node, None)
+
+        # ── 4. Renumber non-protected layers bottom-to-top (1, 2, 3 … N) ─────
         counter = 1
         for child in group_layer.childNodes():          # bottom → top
             if _is_protected(child):
-                continue                                # leave "WHITE" alone
+                continue                                # leave protected layers alone
             child.setName(str(counter))
             counter += 1
 
-        # ── 4. Activate the fresh layer (now the topmost in the group) ────────
+        # ── 5. Activate the fresh layer (topmost drawing layer) ───────────────
         doc.setActiveNode(fresh)
         doc.refreshProjection()
 
