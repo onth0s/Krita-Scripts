@@ -293,8 +293,8 @@ class OperationsPieMenuExtension(Extension):
 
     def execute_west_operation(self):
         """
-        West ('W') stub action:
-        Resize/scale active layer to fit the document size.
+        West ('W') action:
+        Fit/Scale active layer content to canvas dimensions while preserving aspect ratio.
         """
         app = Krita.instance()
         doc = app.activeDocument()
@@ -315,16 +315,43 @@ class OperationsPieMenuExtension(Extension):
             )
             return
 
-        from PyQt5.QtCore import QPointF
         doc_w = doc.width()
         doc_h = doc.height()
 
+        bounds = active_layer.bounds()
+        bx, by, bw, bh = bounds.x(), bounds.y(), bounds.width(), bounds.height()
+
+        if bw <= 0 or bh <= 0:
+            QMessageBox.information(None, "Operations Pie Menu", "Active layer is empty.")
+            return
+
         try:
-            active_layer.scaleNode(QPointF(0, 0), doc_w, doc_h, "Bilinear")
-            active_layer.move(0, 0)
+            from PyQt5.QtGui import QImage
+            from PyQt5.QtCore import Qt, QByteArray
+
+            raw_bytes = active_layer.pixelData(bx, by, bw, bh)
+            img = QImage(raw_bytes, bw, bh, QImage.Format_ARGB32)
+
+            scaled_img = img.scaled(doc_w, doc_h, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            sw = scaled_img.width()
+            sh = scaled_img.height()
+
+            target_x = (doc_w - sw) // 2
+            target_y = (doc_h - sh) // 2
+
+            # Clear original bounds if different position/size
+            clear_bytes = b'\x00' * (bw * bh * 4)
+            active_layer.setPixelData(QByteArray(clear_bytes), bx, by, bw, bh)
+
+            # Write scaled pixels
+            bits = scaled_img.bits()
+            bits.setsize(scaled_img.byteCount())
+            new_bytes = bytes(bits)
+
+            active_layer.setPixelData(QByteArray(new_bytes), target_x, target_y, sw, sh)
             doc.refreshProjection()
         except Exception as e:
-            QMessageBox.warning(None, "Operations Pie Menu", f"Failed to resize layer: {e}")
+            QMessageBox.warning(None, "Operations Pie Menu", f"Failed to fit layer to canvas: {e}")
 
     def execute_se_operation(self):
         """
