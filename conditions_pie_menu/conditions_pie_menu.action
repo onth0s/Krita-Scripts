@@ -13,5 +13,16 @@
             <isCheckable>false</isCheckable>
             <statusTip></statusTip>
         </Action>
+        <Action name="configure_conditions_pie_menu">
+            <icon></icon>
+            <text>Configure Conditions Pie Menu</text>
+            <whatsThis>Opens Configurator dialog for Conditions Pie Menu.</whatsThis>
+            <toolTip>Configure Conditions Pie Menu</toolTip>
+            <iconText>CfgCondPie</iconText>
+            <activationFlags>00000</activationFlags>
+            <shortcut></shortcut>
+            <isCheckable>false</isCheckable>
+            <statusTip></statusTip>
+        </Action>
     </Actions>
 </ActionCollection>

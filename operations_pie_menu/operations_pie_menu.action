@@ -13,5 +13,16 @@
             <isCheckable>false</isCheckable>
             <statusTip></statusTip>
         </Action>
+        <Action name="configure_operations_pie_menu">
+            <icon></icon>
+            <text>Configure Operations Pie Menu</text>
+            <whatsThis>Opens Configurator dialog for Operations Pie Menu.</whatsThis>
+            <toolTip>Configure Operations Pie Menu</toolTip>
+            <iconText>CfgOpsPie</iconText>
+            <activationFlags>00000</activationFlags>
+            <shortcut></shortcut>
+            <isCheckable>false</isCheckable>
+            <statusTip></statusTip>
+        </Action>
     </Actions>
 </ActionCollection>

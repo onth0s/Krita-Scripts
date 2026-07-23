@@ -63,9 +63,6 @@ Workflow automation extension providing utility commands:
 
 ---
 
-### 4. 🔌 Hello World Extension (`hello_extension`)
-Minimalist script extension template registered under **Tools → Scripts → Hello World Script**. Demonstrates action registration and active document state inspection.
-
 ### 5. 🖼️ Dummy Docker Panel (`dummy_docker`)
 Dockable side panel UI template registered under **Settings → Dockers → Dummy Docker Panel**. Demonstrates PyQt widget layout, button signals, and canvas change tracking.
 
@@ -73,18 +70,25 @@ Dockable side panel UI template registered under **Settings → Dockers → Dumm
 
 ## 🛠️ Windows Installation (Directory Junctions)
 
-Krita expects Python plugins to reside in `%APPDATA%\krita\pykrita\`. On Windows, you can create a **Directory Junction (`mklink /J`)** to link this development repository directly into Krita without requiring administrator privileges:
+Krita expects Python plugins to reside in `%APPDATA%\krita\pykrita\`. On Windows, you can create **Directory Junctions (`mklink /J`)** to link this development repository directly into Krita without requiring administrator privileges:
 
 ```powershell
-# Create junction links for plugins
-cmd /c mklink /J "$env:APPDATA\krita\pykrita\filters_pie_menu" "c:\Users\Leonardo\001\00__DEV\Krita-Scripts\filters_pie_menu"
-cmd /c mklink /J "$env:APPDATA\krita\pykrita\operations_pie_menu" "c:\Users\Leonardo\001\00__DEV\Krita-Scripts\operations_pie_menu"
-cmd /c mklink /J "$env:APPDATA\krita\pykrita\conditions_pie_menu" "c:\Users\Leonardo\001\00__DEV\Krita-Scripts\conditions_pie_menu"
+$pykrita = "$env:APPDATA\krita\pykrita"
+$actions = "$env:APPDATA\krita\actions"
+$repo = "c:\Users\Leonardo\001\00__DEV\Krita-Scripts"
 
-# Deploy desktop manifests and action XML files
-Copy-Item "conditions_pie_menu.desktop" "$env:APPDATA\krita\pykrita\" -Force
-if (!(Test-Path "$env:APPDATA\krita\actions")) { New-Item -ItemType Directory -Path "$env:APPDATA\krita\actions" -Force }
-Copy-Item "conditions_pie_menu\conditions_pie_menu.action" "$env:APPDATA\krita\actions\" -Force
+if (!(Test-Path $actions)) { New-Item -ItemType Directory -Path $actions -Force }
+
+# 1. Shared library
+cmd /c mklink /J "$pykrita\krita_pie_menu" "$repo\krita_pie_menu"
+
+# 2. Plugins
+$plugins = @("filters_pie_menu", "operations_pie_menu", "conditions_pie_menu", "quick_script_engine", "dummy_docker")
+foreach ($p in $plugins) {
+    cmd /c mklink /J "$pykrita\$p" "$repo\$p"
+    if (Test-Path "$repo\$p.desktop") { Copy-Item "$repo\$p.desktop" "$pykrita\" -Force }
+    if (Test-Path "$repo\$p\$p.action") { Copy-Item "$repo\$p\$p.action" "$actions\" -Force }
+}
 ```
 
 > **Note:** Edits made in this workspace sync live to Krita instantly!

@@ -13,5 +13,16 @@
             <isCheckable>false</isCheckable>
             <statusTip></statusTip>
         </Action>
+        <Action name="configure_filters_pie_menu">
+            <icon></icon>
+            <text>Configure Filters Pie Menu</text>
+            <whatsThis>Opens Sector Layout Configurator dialog for Filters Pie Menu.</whatsThis>
+            <toolTip>Configure Filters Pie Menu</toolTip>
+            <iconText>CfgFiltersPie</iconText>
+            <activationFlags>00000</activationFlags>
+            <shortcut></shortcut>
+            <isCheckable>false</isCheckable>
+            <statusTip></statusTip>
+        </Action>
     </Actions>
 </ActionCollection>

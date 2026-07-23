@@ -128,11 +128,31 @@ instance.addDockWidgetFactory(factory)
 
 ---
 
-## 5. Development Principles for Agents
+## 5. Shared Library Architecture (`krita_pie_menu`)
+
+All radial Pie Menu extensions (`filters_pie_menu`, `operations_pie_menu`, `conditions_pie_menu`) leverage the shared `krita_pie_menu` widget package:
+
+- **`BasePieMenuExtension` (`krita_pie_menu/base_extension.py`)**: Abstract base class managing configuration persistence, guarded menu display (`show_pie_menu`), and Qt widget destruction lifecycle.
+- **`BasePieConfigDialog` (`krita_pie_menu/base_config_dialog.py`)**: Unified PyQt configuration dialog base class for sector key-bindings and options.
+- **`utils` (`krita_pie_menu/utils.py`)**: Helper utilities (`load_config`, `save_config`, `get_incremental_layer_name`, `create_incremental_layer`, `resolve_action`, `find_brush_preset`, `set_foreground_black`).
+- **`logger` (`krita_pie_menu/logger.py`)**: Thread-safe rotating logger writing to `%APPDATA%/krita/pykrita/krita_scripts.log`.
+
+### Modular Operations Pattern (`operations_pie_menu/operations/`)
+Complex operations are decomposed into dedicated single-responsibility modules:
+- `refine_sketch.py` (North)
+- `sanitize_group.py` (North-East)
+- `bw_preview.py` (South-East)
+- `init_canvas.py` (South)
+- `fit_layer.py` (West)
+
+---
+
+## 6. Development Principles for Agents
 
 1. **Check Active Context**: Always verify `Krita.instance().activeDocument()`, `activeWindow()`, or `activeNode()` before operating on documents/layers.
 2. **Batch & Refresh**: Call `document.refreshProjection()` or `document.waitForDone()` after bulk pixel/layer updates.
-3. **Succinct & Modular**: Keep extensions and dockers clean, separated into single-responsibility modules when growing beyond small scripts.
+3. **Succinct & Modular**: Inherit from `BasePieMenuExtension` for new pie menus, and place operation logic in subpackages rather than monolithic files.
+4. **Structured Logging**: Use `log_info`, `log_warning`, and `log_error` from `krita_pie_menu` rather than swallowing exceptions.
 
 ---
 

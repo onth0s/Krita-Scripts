@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "krita-scripts"
+version = "1.0.0"
+description = "Collection of Krita Python scripts, extensions, dockers, and Blender-style radial pie menu tools."
+authors = [{ name = "Leonardo" }]
+requires-python = ">=3.8"
+
+[tool.mypy]
+python_version = "3.8"
+warn_return_any = false
+warn_unused_configs = true
+ignore_missing_imports = true
+check_untyped_defs = true

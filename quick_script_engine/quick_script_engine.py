@@ -1,7 +1,5 @@
-import re
 from krita import Extension, Krita
-from PyQt5.QtWidgets import QMessageBox
-from krita_pie_menu import ToastNotification
+from krita_pie_menu import ToastNotification, create_incremental_layer
 
 class QuickScriptEngineExtension(Extension):
     """
@@ -35,24 +33,6 @@ class QuickScriptEngineExtension(Extension):
             ToastNotification.show_toast("No active layer selected.", toast_type="warning")
             return
 
-        curr_name = active_layer.name().strip()
-        matches = re.findall(r'\d+', curr_name)
-        if matches:
-            next_num = int(matches[-1]) + 1
-        else:
-            next_num = 1
-
-        new_layer_name = str(next_num)
-
-        # Create new paint layer directly above active_layer
-        new_layer = doc.createNode(new_layer_name, "paintlayer")
-        parent = active_layer.parentNode()
-        if not parent:
-            parent = doc.rootNode()
-        parent.addChildNode(new_layer, active_layer)
-
-        # Set active layer to new layer and refresh
-        doc.setActiveNode(new_layer)
-        doc.refreshProjection()
-
-        ToastNotification.show_toast(f"Created Layer '{new_layer_name}'", toast_type="info")
+        new_layer = create_incremental_layer(doc, active_layer)
+        if new_layer:
+            ToastNotification.show_toast(f"Created Layer '{new_layer.name()}'", toast_type="info")

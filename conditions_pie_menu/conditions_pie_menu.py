@@ -1,73 +1,53 @@
 import os
-import json
-from krita import Extension, Krita
 from PyQt5.QtWidgets import QMessageBox
-from krita_pie_menu import PieMenuWidget, ToastNotification
+from krita_pie_menu import BasePieMenuExtension, ToastNotification
 
-class ConditionsPieMenuExtension(Extension):
+DEFAULT_CONDITIONS_CONFIG = {
+    "duplicate_reflay": False,
+    "N":  { "label": "Stub North",       "action_id": "cond_stub_n" },
+    "NE": { "label": "Duplicate RefLay", "action_id": "cond_toggle_duplicate_reflay" },
+    "E":  { "label": "Stub East",        "action_id": "cond_stub_e" },
+    "SE": { "label": "Stub South East",  "action_id": "cond_stub_se" },
+    "S":  { "label": "Stub South",       "action_id": "cond_stub_s" },
+    "SW": { "label": "Stub South West",  "action_id": "cond_stub_sw" },
+    "W":  { "label": "Stub West",        "action_id": "cond_stub_w" },
+    "NW": { "label": "Stub North West",  "action_id": "cond_stub_nw" }
+}
+
+class ConditionsPieMenuExtension(BasePieMenuExtension):
     """
     Blender-style 8-sector radial Pie Menu for managing global workflow conditions and flags.
     Mapped to Ctrl+Tab.
     """
     def __init__(self, parent):
-        super().__init__(parent)
-        self.pie_widget = None
-        self.config_path = os.path.join(os.path.dirname(__file__), 'config.json')
-
-    def setup(self):
-        pass
+        config_path = os.path.join(os.path.dirname(__file__), 'config.json')
+        super().__init__(
+            parent,
+            config_path=config_path,
+            default_config=DEFAULT_CONDITIONS_CONFIG,
+            accent_color="#D69E2E",
+            object_name="ConditionsPieWidget"
+        )
 
     def createActions(self, window):
         action = window.createAction("trigger_conditions_pie_menu", "Conditions Pie Menu", "tools/scripts")
         action.triggered.connect(self.show_pie_menu)
 
-    def load_config(self):
-        if os.path.exists(self.config_path):
-            try:
-                with open(self.config_path, 'r', encoding='utf-8') as f:
-                    return json.load(f)
-            except Exception:
-                pass
-        return {
-            "duplicate_reflay": False,
-            "N":  { "label": "Stub North",       "action_id": "cond_stub_n" },
-            "NE": { "label": "Duplicate RefLay", "action_id": "cond_toggle_duplicate_reflay" },
-            "E":  { "label": "Stub East",        "action_id": "cond_stub_e" },
-            "SE": { "label": "Stub South East",  "action_id": "cond_stub_se" },
-            "S":  { "label": "Stub South",       "action_id": "cond_stub_s" },
-            "SW": { "label": "Stub South West",  "action_id": "cond_stub_sw" },
-            "W":  { "label": "Stub West",        "action_id": "cond_stub_w" },
-            "NW": { "label": "Stub North West",  "action_id": "cond_stub_nw" }
-        }
+        cfg_action = window.createAction("configure_conditions_pie_menu", "Configure Conditions Pie Menu", "tools/scripts")
+        cfg_action.triggered.connect(self.open_config_dialog)
 
-    def save_config(self, cfg):
-        try:
-            with open(self.config_path, 'w', encoding='utf-8') as f:
-                json.dump(cfg, f, indent=2)
-        except Exception:
-            pass
-
-    def get_condition(self, key, default=False):
+    def get_condition(self, key: str, default: bool = False) -> bool:
         cfg = self.load_config()
-        return cfg.get(key, default)
+        return bool(cfg.get(key, default))
 
-    def toggle_condition(self, key):
+    def toggle_condition(self, key: str) -> bool:
         cfg = self.load_config()
         new_val = not cfg.get(key, False)
         cfg[key] = new_val
         self.save_config(cfg)
         return new_val
 
-    def show_pie_menu(self):
-        try:
-            if self.pie_widget is not None:
-                if self.pie_widget.isVisible() or getattr(self.pie_widget, 'is_interrupted', False):
-                    return
-        except (RuntimeError, ReferenceError):
-            self.pie_widget = None
-
-        self.pie_widget = None
-
+    def build_pie_config(self):
         cfg = self.load_config()
         callbacks = {}
         items_meta = {}
@@ -94,20 +74,20 @@ class ConditionsPieMenuExtension(Extension):
             act_id = data.get('action_id', '')
             items_meta[code] = (label, act_id)
 
-        self.pie_widget = PieMenuWidget(
-            callbacks,
-            items_meta=items_meta,
-            validators=validators,
-            toggle_states=toggle_states,
-            accent_color="#D69E2E",
-            object_name="ConditionsPieWidget"
-        )
-        self.pie_widget.show_at_cursor()
+        return callbacks, items_meta, validators, toggle_states
 
     def toggle_duplicate_reflay(self):
         new_state = self.toggle_condition("duplicate_reflay")
         status_str = "ON" if new_state else "OFF"
         ToastNotification.show_toast(f"Duplicate RefLay: {status_str}", toast_type="info")
 
-    def make_stub_callback(self, code):
+    def make_stub_callback(self, code: str):
         return lambda: QMessageBox.information(None, "Conditions Pie Menu", f"Stub clicked: [{code}]")
+
+    def open_config_dialog(self):
+        try:
+            from .config_dialog import ConditionsConfigDialog
+            dlg = ConditionsConfigDialog(self.config_path, on_save_callback=None)
+            dlg.exec_()
+        except ImportError:
+            QMessageBox.information(None, "Conditions Pie Menu", "Conditions Config Dialog not configured yet.")
