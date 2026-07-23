@@ -1,5 +1,6 @@
 from krita import DockWidget, Krita
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QPushButton
+from PyQt5.QtWidgets import QLabel, QPushButton, QVBoxLayout, QWidget
+
 
 class DummyDocker(DockWidget):
     def __init__(self):

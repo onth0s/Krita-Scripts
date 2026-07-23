@@ -133,8 +133,8 @@ instance.addDockWidgetFactory(factory)
 All radial Pie Menu extensions (`filters_pie_menu`, `operations_pie_menu`, `conditions_pie_menu`) leverage the shared `krita_pie_menu` widget package:
 
 - **`BasePieMenuExtension` (`krita_pie_menu/base_extension.py`)**: Abstract base class managing configuration persistence, guarded menu display (`show_pie_menu`), and Qt widget destruction lifecycle.
-- **`BasePieConfigDialog` (`krita_pie_menu/base_config_dialog.py`)**: Unified PyQt configuration dialog base class for sector key-bindings and options.
-- **`utils` (`krita_pie_menu/utils.py`)**: Helper utilities (`load_config`, `save_config`, `get_incremental_layer_name`, `create_incremental_layer`, `resolve_action`, `find_brush_preset`, `set_foreground_black`).
+- **`BasePieConfigDialog` (`krita_pie_menu/base_config_dialog.py`)**: Unified PyQt configuration dialog base class for sector key-bindings and options; exports `SECTOR_NAMES`.
+- **`utils` (`krita_pie_menu/utils.py`)**: Helper utilities (`load_config`, `save_config`, `get_incremental_layer_name`, `create_incremental_layer`, `resolve_action`, `find_brush_preset`, `set_foreground_black`, `make_doc_active_validator`).
 - **`logger` (`krita_pie_menu/logger.py`)**: Thread-safe rotating logger writing to `%APPDATA%/krita/pykrita/krita_scripts.log`.
 
 ### Modular Operations Pattern (`operations_pie_menu/operations/`)
@@ -153,10 +153,11 @@ Complex operations are decomposed into dedicated single-responsibility modules:
 2. **Batch & Refresh**: Call `document.refreshProjection()` or `document.waitForDone()` after bulk pixel/layer updates.
 3. **Succinct & Modular**: Inherit from `BasePieMenuExtension` for new pie menus, and place operation logic in subpackages rather than monolithic files.
 4. **Structured Logging**: Use `log_info`, `log_warning`, and `log_error` from `krita_pie_menu` rather than swallowing exceptions.
+5. **Ruff Linting & Formatting**: Regularly run `ruff check --fix .` and `ruff format .` after modifying Python code to enforce import hygiene, type consistency, and code style.
 
 ---
 
-## 6. Action Shortcuts Registration (`.action` XML Files)
+## 7. Action Shortcuts Registration (`.action` XML Files)
 
 To make custom extension actions searchable and assignable in Krita's **Settings > Configure Krita > Keyboard Shortcuts** menu, Krita requires a `.action` XML file placed in `%APPDATA%\krita\actions\`.
 
@@ -186,13 +187,13 @@ To make custom extension actions searchable and assignable in Krita's **Settings
 
 ---
 
-## 7. Krita Layer Tree API — Hard-Won Lessons (Do Not Repeat)
+## 8. Krita Layer Tree API — Hard-Won Lessons (Do Not Repeat)
 
 These mistakes were made repeatedly in `sanitize_group.py` over multiple attempts. Read this before touching any layer-ordering code.
 
 ---
 
-### 7.1 `childNodes()` Ordering
+### 8.1 `childNodes()` Ordering
 
 `group_layer.childNodes()` returns children in **bottom-to-top UI order**:
 
@@ -205,7 +206,7 @@ This is the **opposite of what you might intuit** from "index 0 = first". Do not
 
 ---
 
-### 7.2 `addChildNode(node, above)` — Detaching & Order Semantics
+### 8.2 `addChildNode(node, above)` — Detaching & Order Semantics
 
 ```python
 group_layer.addChildNode(node, reference_node)
@@ -230,7 +231,7 @@ if bw_node:
 
 ---
 
-### 7.3 Protected Layers — Use a Set, Check Before ANY Mutation
+### 8.3 Protected Layers — Use a Set, Check Before ANY Mutation
 
 Protected layer names (currently `"WHITE"`, `"B&W"`, and `"LINES"`) must be stored in a module-level set and checked by normalising the name **before** any rename or remove call. Never inline the check as a one-off string comparison scattered through the function — it will be missed.
 
@@ -245,7 +246,7 @@ def _is_protected(node) -> bool:
 
 ---
 
-### 7.4 Snapshot the Child List Before Mutating the Tree
+### 8.4 Snapshot the Child List Before Mutating the Tree
 
 When removing nodes inside a loop, always snapshot first:
 

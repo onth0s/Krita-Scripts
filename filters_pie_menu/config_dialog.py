@@ -1,5 +1,6 @@
-from PyQt5.QtWidgets import QLabel, QComboBox, QGridLayout
-from krita_pie_menu import BasePieConfigDialog
+from PyQt5.QtWidgets import QComboBox, QGridLayout, QLabel
+
+from krita_pie_menu import SECTOR_NAMES, BasePieConfigDialog
 
 FILTER_OPTIONS = [
     ("HSV Adjustment...", "krita_filter_hsvadjustment"),
@@ -20,21 +21,12 @@ FILTER_OPTIONS = [
     ("Burn...", "krita_filter_burn"),
 ]
 
-SECTOR_NAMES = [
-    ("N",  "North (Up)"),
-    ("NE", "North-East"),
-    ("E",  "East (Right)"),
-    ("SE", "South-East"),
-    ("S",  "South (Down)"),
-    ("SW", "South-West"),
-    ("W",  "West (Left)"),
-    ("NW", "North-West"),
-]
 
 class SectorConfigDialog(BasePieConfigDialog):
     """
     Interactive PyQt dialog for reordering and customizing the 8-sector Filters Pie Menu.
     """
+
     def __init__(self, config_path, on_save_callback=None, parent=None):
         self.combos = {}
         super().__init__(
@@ -42,7 +34,7 @@ class SectorConfigDialog(BasePieConfigDialog):
             title="Configure Filters Pie Menu Layout",
             on_save_callback=on_save_callback,
             parent=parent,
-            accent_color="#3182CE"
+            accent_color="#3182CE",
         )
 
     def build_sector_editors(self, grid: QGridLayout):
@@ -54,7 +46,7 @@ class SectorConfigDialog(BasePieConfigDialog):
                 combo.addItem(label, act_id)
 
             if code in self.current_config:
-                curr_act = self.current_config[code].get('action_id', '')
+                curr_act = self.current_config[code].get("action_id", "")
                 index = combo.findData(curr_act)
                 if index >= 0:
                     combo.setCurrentIndex(index)
@@ -73,8 +65,5 @@ class SectorConfigDialog(BasePieConfigDialog):
             combo = self.combos[code]
             label = combo.currentText()
             action_id = combo.currentData()
-            new_config[code] = {
-                "label": label,
-                "action_id": action_id
-            }
+            new_config[code] = {"label": label, "action_id": action_id}
         return new_config

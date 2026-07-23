@@ -1,56 +1,66 @@
 import os
+
 from krita import Krita
 from PyQt5.QtWidgets import QMessageBox
+
 from krita_pie_menu import BasePieMenuExtension, load_config
+
 from .config_dialog import OperationsConfigDialog
 from .operations import (
-    execute_refine_sketch,
-    validate_refine_sketch,
-    execute_sanitize_group,
-    validate_sanitize_group,
     execute_bw_preview,
-    execute_init_canvas,
     execute_fit_layer,
-    validate_fit_layer
+    execute_init_canvas,
+    execute_refine_sketch,
+    execute_sanitize_group,
+    validate_fit_layer,
+    validate_refine_sketch,
+    validate_sanitize_group,
 )
 
 DEFAULT_OPERATIONS_CONFIG = {
-    "N":  { "label": "Refine Sketch",       "action_id": "op_refine_sketch" },
-    "NE": { "label": "Sanitize Group",      "action_id": "op_sanitize_group" },
-    "E":  { "label": "Stub East",           "action_id": "op_stub_east" },
-    "SE": { "label": "B&W Preview",         "action_id": "op_bw_preview" },
-    "S":  { "label": "Init Canvas",         "action_id": "op_setup_canvas" },
-    "SW": { "label": "Stub South West",     "action_id": "op_stub_sw" },
-    "W":  { "label": "Fit Layer to Canvas", "action_id": "op_stub_west" },
-    "NW": { "label": "Stub North West",     "action_id": "op_stub_nw" }
+    "N": {"label": "Refine Sketch", "action_id": "op_refine_sketch"},
+    "NE": {"label": "Sanitize Group", "action_id": "op_sanitize_group"},
+    "E": {"label": "Stub East", "action_id": "op_placeholder_east"},
+    "SE": {"label": "B&W Preview", "action_id": "op_bw_preview"},
+    "S": {"label": "Init Canvas", "action_id": "op_setup_canvas"},
+    "SW": {"label": "Stub South West", "action_id": "op_placeholder_sw"},
+    "W": {"label": "Fit Layer to Canvas", "action_id": "op_fit_layer"},
+    "NW": {"label": "Stub North West", "action_id": "op_placeholder_nw"},
 }
+
 
 class OperationsPieMenuExtension(BasePieMenuExtension):
     def __init__(self, parent):
-        config_path = os.path.join(os.path.dirname(__file__), 'config.json')
+        config_path = os.path.join(os.path.dirname(__file__), "config.json")
         super().__init__(
             parent,
             config_path=config_path,
             default_config=DEFAULT_OPERATIONS_CONFIG,
             accent_color="#805AD5",
-            object_name="OperationsPieWidget"
+            object_name="OperationsPieWidget",
         )
 
     def createActions(self, window):
         action = window.createAction("trigger_operations_pie_menu", "Operations Pie Menu", "tools/scripts")
         action.triggered.connect(self.show_pie_menu)
 
-        cfg_action = window.createAction("configure_operations_pie_menu", "Configure Operations Pie Menu", "tools/scripts")
+        cfg_action = window.createAction(
+            "configure_operations_pie_menu", "Configure Operations Pie Menu", "tools/scripts"
+        )
         cfg_action.triggered.connect(self.open_config_dialog)
 
-    def _get_duplicate_reflay_condition(self) -> bool:
+    def _read_conditions_config(self, key: str, default: bool = False) -> bool:
         """
         Dynamically query condition state from conditions_pie_menu config if available.
+        Cross-plugin dependency: operations_pie_menu reads workflow flags set by conditions_pie_menu.
         """
         pykrita_dir = os.path.dirname(os.path.dirname(__file__))
-        cond_cfg_path = os.path.join(pykrita_dir, 'conditions_pie_menu', 'config.json')
+        cond_cfg_path = os.path.join(pykrita_dir, "conditions_pie_menu", "config.json")
         cond_cfg = load_config(cond_cfg_path, {})
-        return bool(cond_cfg.get("duplicate_reflay", False))
+        return bool(cond_cfg.get(key, default))
+
+    def _get_duplicate_reflay_condition(self) -> bool:
+        return self._read_conditions_config("duplicate_reflay", False)
 
     def build_pie_config(self):
         config = self.load_config()
@@ -58,32 +68,26 @@ class OperationsPieMenuExtension(BasePieMenuExtension):
         items_meta = {}
         validators = {}
 
-        validators['N'] = validate_refine_sketch
-        validators['NE'] = validate_sanitize_group
-        validators['W'] = validate_fit_layer
-
-        def disabled_stub():
-            return False, "Stub operation not configured."
-
-        for code in ['E', 'SW', 'NW']:
-            validators[code] = disabled_stub
+        validators["N"] = validate_refine_sketch
+        validators["NE"] = validate_sanitize_group
+        validators["W"] = validate_fit_layer
 
         dup_reflay = self._get_duplicate_reflay_condition()
 
         for code, data in config.items():
-            act_id = data.get('action_id', '')
-            label = data.get('label', '')
+            act_id = data.get("action_id", "")
+            label = data.get("label", "")
             items_meta[code] = (label, act_id)
 
-            if code == 'S' or act_id == 'op_setup_canvas':
+            if code == "S" or act_id == "op_setup_canvas":
                 callbacks[code] = execute_init_canvas
-            elif code == 'N' or act_id == 'op_refine_sketch' or act_id == 'op_stub_north':
+            elif code == "N" or act_id == "op_refine_sketch" or act_id == "op_stub_north":
                 callbacks[code] = lambda dup=dup_reflay: execute_refine_sketch(duplicate_reflay=dup)
-            elif code == 'NE' or act_id == 'op_sanitize_group':
+            elif code == "NE" or act_id == "op_sanitize_group":
                 callbacks[code] = execute_sanitize_group
-            elif code == 'W' or act_id == 'op_stub_west':
+            elif code == "W" or act_id == "op_stub_west":
                 callbacks[code] = execute_fit_layer
-            elif code == 'SE' or act_id == 'op_bw_preview':
+            elif code == "SE" or act_id == "op_bw_preview":
                 callbacks[code] = execute_bw_preview
             else:
                 callbacks[code] = self.make_stub_callback(code, label, act_id)

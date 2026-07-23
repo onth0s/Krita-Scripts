@@ -1,39 +1,46 @@
 import os
+
 from PyQt5.QtWidgets import QMessageBox
+
 from krita_pie_menu import BasePieMenuExtension, ToastNotification
 
 DEFAULT_CONDITIONS_CONFIG = {
     "duplicate_reflay": False,
-    "N":  { "label": "Stub North",       "action_id": "cond_stub_n" },
-    "NE": { "label": "Duplicate RefLay", "action_id": "cond_toggle_duplicate_reflay" },
-    "E":  { "label": "Stub East",        "action_id": "cond_stub_e" },
-    "SE": { "label": "Stub South East",  "action_id": "cond_stub_se" },
-    "S":  { "label": "Stub South",       "action_id": "cond_stub_s" },
-    "SW": { "label": "Stub South West",  "action_id": "cond_stub_sw" },
-    "W":  { "label": "Stub West",        "action_id": "cond_stub_w" },
-    "NW": { "label": "Stub North West",  "action_id": "cond_stub_nw" }
+    "keep_aspect_ratio": False,
+    "N": {"label": "Stub North", "action_id": "cond_stub_n"},
+    "NE": {"label": "Duplicate RefLay", "action_id": "cond_toggle_duplicate_reflay"},
+    "E": {"label": "Stub East", "action_id": "cond_stub_e"},
+    "SE": {"label": "Stub South East", "action_id": "cond_stub_se"},
+    "S": {"label": "Stub South", "action_id": "cond_stub_s"},
+    "SW": {"label": "Stub South West", "action_id": "cond_stub_sw"},
+    "W": {"label": "Keep Aspect Ratio (Fit)", "action_id": "cond_toggle_keep_aspect_ratio"},
+    "NW": {"label": "Stub North West", "action_id": "cond_stub_nw"},
 }
+
 
 class ConditionsPieMenuExtension(BasePieMenuExtension):
     """
     Blender-style 8-sector radial Pie Menu for managing global workflow conditions and flags.
     Mapped to Ctrl+Tab.
     """
+
     def __init__(self, parent):
-        config_path = os.path.join(os.path.dirname(__file__), 'config.json')
+        config_path = os.path.join(os.path.dirname(__file__), "config.json")
         super().__init__(
             parent,
             config_path=config_path,
             default_config=DEFAULT_CONDITIONS_CONFIG,
             accent_color="#D69E2E",
-            object_name="ConditionsPieWidget"
+            object_name="ConditionsPieWidget",
         )
 
     def createActions(self, window):
         action = window.createAction("trigger_conditions_pie_menu", "Conditions Pie Menu", "tools/scripts")
         action.triggered.connect(self.show_pie_menu)
 
-        cfg_action = window.createAction("configure_conditions_pie_menu", "Configure Conditions Pie Menu", "tools/scripts")
+        cfg_action = window.createAction(
+            "configure_conditions_pie_menu", "Configure Conditions Pie Menu", "tools/scripts"
+        )
         cfg_action.triggered.connect(self.open_config_dialog)
 
     def get_condition(self, key: str, default: bool = False) -> bool:
@@ -57,8 +64,8 @@ class ConditionsPieMenuExtension(BasePieMenuExtension):
         def disabled_stub():
             return False, "Stub condition not configured."
 
-        # 7 stubs: N, E, SE, S, SW, W, NW
-        for code in ['N', 'E', 'SE', 'S', 'SW', 'W', 'NW']:
+        # 6 stubs: N, E, SE, S, SW, NW
+        for code in ["N", "E", "SE", "S", "SW", "NW"]:
             validators[code] = disabled_stub
             callbacks[code] = self.make_stub_callback(code)
 
@@ -67,11 +74,16 @@ class ConditionsPieMenuExtension(BasePieMenuExtension):
         toggle_states["NE"] = dup_state
         callbacks["NE"] = self.toggle_duplicate_reflay
 
+        # W sector: Keep Aspect Ratio toggle
+        ar_state = cfg.get("keep_aspect_ratio", False)
+        toggle_states["W"] = ar_state
+        callbacks["W"] = self.toggle_keep_aspect_ratio
+
         # Build items_meta
-        for code in ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']:
+        for code in ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]:
             data = cfg.get(code, {})
-            label = data.get('label', code)
-            act_id = data.get('action_id', '')
+            label = data.get("label", code)
+            act_id = data.get("action_id", "")
             items_meta[code] = (label, act_id)
 
         return callbacks, items_meta, validators, toggle_states
@@ -81,12 +93,18 @@ class ConditionsPieMenuExtension(BasePieMenuExtension):
         status_str = "ON" if new_state else "OFF"
         ToastNotification.show_toast(f"Duplicate RefLay: {status_str}", toast_type="info")
 
+    def toggle_keep_aspect_ratio(self):
+        new_state = self.toggle_condition("keep_aspect_ratio")
+        status_str = "ON" if new_state else "OFF"
+        ToastNotification.show_toast(f"Keep Aspect Ratio (Fit): {status_str}", toast_type="info")
+
     def make_stub_callback(self, code: str):
-        return lambda: QMessageBox.information(None, "Conditions Pie Menu", f"Stub clicked: [{code}]")
+        return lambda: ToastNotification.show_toast(f"Condition [{code}] stub not implemented", toast_type="info")
 
     def open_config_dialog(self):
         try:
             from .config_dialog import ConditionsConfigDialog
+
             dlg = ConditionsConfigDialog(self.config_path, on_save_callback=None)
             dlg.exec_()
         except ImportError:

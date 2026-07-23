@@ -1,33 +1,33 @@
-from typing import Dict, Any, Optional, Callable
-from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import (
-    QDialog, QVBoxLayout, QHBoxLayout, QGridLayout,
-    QLabel, QPushButton, QMessageBox
-)
+from typing import Any, Callable, Dict, Optional
+
+from PyQt5.QtWidgets import QDialog, QGridLayout, QHBoxLayout, QLabel, QMessageBox, QPushButton, QVBoxLayout
+
 from .utils import load_config, save_config
 
 SECTOR_NAMES = [
-    ("N",  "North (Up)"),
+    ("N", "North (Up)"),
     ("NE", "North-East"),
-    ("E",  "East (Right)"),
+    ("E", "East (Right)"),
     ("SE", "South-East"),
-    ("S",  "South (Down)"),
+    ("S", "South (Down)"),
     ("SW", "South-West"),
-    ("W",  "West (Left)"),
+    ("W", "West (Left)"),
     ("NW", "North-West"),
 ]
+
 
 class BasePieConfigDialog(QDialog):
     """
     Base dialog class for customizing pie menu sector layouts and configuration options.
     """
+
     def __init__(
         self,
         config_path: str,
         title: str,
         on_save_callback: Optional[Callable[[Dict[str, Any]], None]] = None,
         parent=None,
-        accent_color: str = "#3182CE"
+        accent_color: str = "#3182CE",
     ):
         super().__init__(parent)
         self.setWindowTitle(title)

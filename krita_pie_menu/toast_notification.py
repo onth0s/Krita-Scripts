@@ -1,11 +1,13 @@
-from PyQt5.QtCore import Qt, QTimer, QPropertyAnimation, QEasingCurve
+from PyQt5.QtCore import QEasingCurve, QPropertyAnimation, Qt, QTimer
 from PyQt5.QtGui import QColor
-from PyQt5.QtWidgets import QWidget, QLabel, QHBoxLayout, QGraphicsOpacityEffect
+from PyQt5.QtWidgets import QGraphicsOpacityEffect, QHBoxLayout, QLabel, QWidget
+
 
 class ToastNotification(QWidget):
     """
     Sleek, animated Toast Notification widget positioned at the bottom-left of Krita main window.
     """
+
     _active_toast = None
 
     def __init__(self, message, parent=None, duration_ms=2500, toast_type="warning"):
@@ -16,7 +18,7 @@ class ToastNotification(QWidget):
         self.setAttribute(Qt.WA_DeleteOnClose, True)
         self.duration_ms = duration_ms
         self.toast_type = toast_type
-        
+
         # Border accent color based on toast type
         if toast_type == "success":
             accent_hex = "#48BB78"
@@ -24,14 +26,14 @@ class ToastNotification(QWidget):
             accent_hex = "#4299E1"
         else:
             accent_hex = "#ECC94B"
-            
+
         self.accent_color = QColor(accent_hex)
         self.bg_color = QColor(18, 24, 34, 245)
         self.border_color = QColor(255, 255, 255, 40)
-        
+
         layout = QHBoxLayout(self)
         layout.setContentsMargins(18, 10, 16, 10)
-        
+
         self.label = QLabel(message, self)
         self.label.setStyleSheet("""
             QLabel {
@@ -43,13 +45,14 @@ class ToastNotification(QWidget):
             }
         """)
         layout.addWidget(self.label)
-        
+
         self.opacity_effect = QGraphicsOpacityEffect(self)
         self.setGraphicsEffect(self.opacity_effect)
         self.opacity_effect.setOpacity(0.0)
 
     def paintEvent(self, event):
-        from PyQt5.QtGui import QPainter, QPainterPath, QPen, QBrush
+        from PyQt5.QtGui import QBrush, QPainter, QPainterPath, QPen
+
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
 
@@ -74,13 +77,13 @@ class ToastNotification(QWidget):
         accent_path.lineTo(rect.x() + accent_bar_w, rect.y())
         accent_path.lineTo(rect.x() + accent_bar_w, rect.y() + rect.height())
         accent_path.lineTo(rect.x() + r, rect.y() + rect.height())
-        accent_path.arcTo(rect.x(), rect.y() + rect.height() - 2*r, 2*r, 2*r, 270, -90)
+        accent_path.arcTo(rect.x(), rect.y() + rect.height() - 2 * r, 2 * r, 2 * r, 270, -90)
         accent_path.lineTo(rect.x(), rect.y() + r)
-        accent_path.arcTo(rect.x(), rect.y(), 2*r, 2*r, 180, -90)
+        accent_path.arcTo(rect.x(), rect.y(), 2 * r, 2 * r, 180, -90)
         accent_path.closeSubpath()
 
         painter.fillPath(accent_path, QBrush(self.accent_color))
-        
+
     def fade_in(self):
         self.anim = QPropertyAnimation(self.opacity_effect, b"opacity")
         self.anim.setDuration(200)
@@ -88,7 +91,7 @@ class ToastNotification(QWidget):
         self.anim.setEndValue(1.0)
         self.anim.setEasingCurve(QEasingCurve.OutCubic)
         self.anim.start()
-        
+
         # Schedule fade out
         QTimer.singleShot(self.duration_ms, self.fade_out)
 
@@ -108,6 +111,7 @@ class ToastNotification(QWidget):
         """
         try:
             from krita import Krita
+
             app = Krita.instance()
             win = app.activeWindow()
             if not win:
@@ -115,8 +119,9 @@ class ToastNotification(QWidget):
             qwin = win.qwindow()
             if not qwin:
                 return 0
-            
+
             from PyQt5.QtWidgets import QDockWidget, QMainWindow
+
             # Check if qwin is or contains QMainWindow
             main_window = qwin if isinstance(qwin, QMainWindow) else qwin.findChild(QMainWindow)
             if not main_window:
@@ -127,10 +132,10 @@ class ToastNotification(QWidget):
                         main_window = parent
                         break
                     parent = parent.parent()
-            
+
             if not main_window:
                 return 0
-                
+
             max_right = 0
             docks = main_window.findChildren(QDockWidget)
             for dock in docks:
@@ -153,25 +158,26 @@ class ToastNotification(QWidget):
             except Exception:
                 pass
             cls._active_toast = None
-            
+
         toast = cls(message, parent=parent, duration_ms=duration_ms, toast_type=toast_type)
         cls._active_toast = toast
-        
+
         toast.adjustSize()
         gap = 20
         status_bar_h = 28  # clearance for Krita's bottom status bar
-        
+
         left_dock_offset = cls.get_left_dockers_offset()
-        
+
         if parent:
             geo = parent.geometry()
             pos_x = geo.x() + max(gap, left_dock_offset + gap)
             pos_y = geo.y() + geo.height() - toast.height() - (status_bar_h + gap)
         else:
             from PyQt5.QtWidgets import QApplication
+
             app_inst = QApplication.instance()
             active_win = app_inst.activeWindow() if app_inst else None
-            
+
             if active_win:
                 win_geo = active_win.geometry()
                 pos_x = win_geo.x() + max(gap, left_dock_offset + gap)
@@ -180,7 +186,7 @@ class ToastNotification(QWidget):
                 screen = QApplication.primaryScreen().geometry()
                 pos_x = screen.x() + max(gap, left_dock_offset + gap)
                 pos_y = screen.y() + screen.height() - toast.height() - (status_bar_h + gap)
-            
+
         toast.move(pos_x, pos_y)
         toast.show()
         toast.fade_in()

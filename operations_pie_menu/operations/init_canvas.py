@@ -1,14 +1,9 @@
 from krita import Krita
 from PyQt5.QtCore import QByteArray
 from PyQt5.QtWidgets import QMessageBox
-from krita_pie_menu import (
-    log_error,
-    log_info,
-    log_warning,
-    resolve_action,
-    find_brush_preset,
-    set_foreground_black
-)
+
+from krita_pie_menu import find_brush_preset, log_error, log_info, log_warning, resolve_action, set_foreground_black
+
 
 def execute_init_canvas():
     """
@@ -35,11 +30,7 @@ def execute_init_canvas():
 
     if len(all_nodes) > 1:
         reply = QMessageBox.question(
-            None,
-            "Nuke Document?",
-            "Nuke Document?",
-            QMessageBox.Yes | QMessageBox.No,
-            QMessageBox.No
+            None, "Nuke Document?", "Nuke Document?", QMessageBox.Yes | QMessageBox.No, QMessageBox.No
         )
         if reply != QMessageBox.Yes:
             return
@@ -72,7 +63,7 @@ def execute_init_canvas():
     try:
         sample = base_layer.pixelData(0, 0, 1, 1)
         p_len = len(sample) if sample else 4
-        white_bytes = b'\xff' * (w * h * p_len)
+        white_bytes = b"\xff" * (w * h * p_len)
         base_layer.setPixelData(QByteArray(white_bytes), 0, 0, w, h)
     except Exception as e:
         log_error("init_canvas", "Failed filling base layer with white", e)

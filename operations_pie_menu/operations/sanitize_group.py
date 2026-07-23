@@ -1,7 +1,7 @@
 from krita import Krita
 from PyQt5.QtWidgets import QMessageBox
-from krita_pie_menu import log_error, log_info, ToastNotification
 
+from krita_pie_menu import log_error, log_info
 
 _PROTECTED_NAMES = {"WHITE", "B&W", "LINES"}
 
@@ -88,9 +88,9 @@ def execute_sanitize_group():
 
         # ── 5. Renumber non-protected layers bottom-to-top (1, 2, 3 … N) ─────
         counter = 1
-        for child in group_layer.childNodes():          # bottom → top
+        for child in group_layer.childNodes():  # bottom → top
             if _is_protected(child):
-                continue                                # leave protected layers alone
+                continue  # leave protected layers alone
             child.setName(str(counter))
             counter += 1
 
@@ -98,12 +98,11 @@ def execute_sanitize_group():
         doc.setActiveNode(fresh)
         doc.refreshProjection()
 
-        log_info("sanitize_group",
-                 f"Sanitized '{group_layer.name()}': "
-                 f"{len(group_layer.childNodes())} layers, "
-                 f"active → '{fresh.name()}'")
+        log_info(
+            "sanitize_group",
+            f"Sanitized '{group_layer.name()}': {len(group_layer.childNodes())} layers, active → '{fresh.name()}'",
+        )
 
     except Exception as e:
         log_error("sanitize_group", "Error during group sanitization", e)
-        QMessageBox.warning(None, "Operations Pie Menu",
-                            f"Failed to sanitize group: {e}")
+        QMessageBox.warning(None, "Operations Pie Menu", f"Failed to sanitize group: {e}")

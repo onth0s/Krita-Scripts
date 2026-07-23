@@ -1,21 +1,24 @@
-import os
-from typing import Dict, Any, Tuple, Optional
-from krita import Extension, Krita
+from typing import Any, Dict, Optional, Tuple
+
+from krita import Extension
+
 from .pie_widget import PieMenuWidget
 from .utils import load_config, save_config
+
 
 class BasePieMenuExtension(Extension):
     """
     Abstract base class for Krita radial Pie Menu extensions.
     Handles configuration management, stale widget cleanup, and standard guard patterns.
     """
+
     def __init__(
         self,
         parent,
         config_path: str,
         default_config: Dict[str, Any],
         accent_color: str = "#3182CE",
-        object_name: str = "BasePieWidget"
+        object_name: str = "BasePieWidget",
     ):
         super().__init__(parent)
         self.pie_widget: Optional[PieMenuWidget] = None
@@ -51,7 +54,7 @@ class BasePieMenuExtension(Extension):
         """
         try:
             if self.pie_widget is not None:
-                if self.pie_widget.isVisible() or getattr(self.pie_widget, 'is_interrupted', False):
+                if self.pie_widget.isVisible() or getattr(self.pie_widget, "is_interrupted", False):
                     return
         except (RuntimeError, ReferenceError):
             self.pie_widget = None
@@ -66,7 +69,7 @@ class BasePieMenuExtension(Extension):
             validators=validators,
             toggle_states=toggle_states,
             accent_color=self.accent_color,
-            object_name=self.object_name
+            object_name=self.object_name,
         )
         try:
             self.pie_widget.destroyed.connect(self._on_widget_destroyed)

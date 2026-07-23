@@ -1,7 +1,9 @@
 from krita import Krita
 from PyQt5.QtCore import QByteArray
 from PyQt5.QtWidgets import QMessageBox
-from krita_pie_menu import log_error, log_info
+
+from krita_pie_menu import log_error, log_info, log_warning
+
 
 def execute_bw_preview():
     """
@@ -52,9 +54,9 @@ def execute_bw_preview():
         sample = bw_layer.pixelData(0, 0, 1, 1)
         p_len = len(sample) if sample else 4
         if p_len == 4:
-            black_pixel = b'\x00\x00\x00\xff'
+            black_pixel = b"\x00\x00\x00\xff"
         else:
-            black_pixel = b'\x00' * (p_len - 1) + b'\xff'
+            black_pixel = b"\x00" * (p_len - 1) + b"\xff"
         black_bytes = black_pixel * (w * h)
         bw_layer.setPixelData(QByteArray(black_bytes), 0, 0, w, h)
 

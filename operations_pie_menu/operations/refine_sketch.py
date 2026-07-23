@@ -1,17 +1,21 @@
-import random
 import colorsys
+import random
+
 from krita import Krita
 from PyQt5.QtCore import QByteArray
-from PyQt5.QtWidgets import QMessageBox, QApplication
+from PyQt5.QtWidgets import QApplication, QMessageBox
+
 from krita_pie_menu import (
+    create_incremental_layer,
+    find_brush_preset,
     log_error,
     log_info,
     log_warning,
-    create_incremental_layer,
+    make_doc_active_validator,
     resolve_action,
-    find_brush_preset,
-    set_foreground_black
+    set_foreground_black,
 )
+
 
 def is_layer_empty(node):
     if not node or node.type() != "paintlayer":
@@ -19,19 +23,17 @@ def is_layer_empty(node):
     b = node.bounds()
     return b.width() <= 0 or b.height() <= 0
 
-def validate_refine_sketch():
-    app = Krita.instance()
-    doc = app.activeDocument()
-    if not doc:
-        return False, "No active document."
-    node = doc.activeNode()
-    if not node:
-        return False, "No active layer selected."
+
+def _refine_sketch_extra_checks(doc, node):
     if node.type() == "grouplayer":
         return False, "Refine Sketch requires a Paint Layer (Group selected)."
     if is_layer_empty(node):
         return False, "Active layer is empty."
     return True, ""
+
+
+validate_refine_sketch = make_doc_active_validator(_refine_sketch_extra_checks)
+
 
 def handle_selection_cut_paste(doc, app, active_layer):
     """
@@ -67,6 +69,7 @@ def handle_selection_cut_paste(doc, app, active_layer):
 
     return active_layer
 
+
 def fill_layer_random_hsl(doc, layer):
     """
     Fills sketch layer line pixels with a perceptually distinct random HSL color.
@@ -89,12 +92,13 @@ def fill_layer_random_hsl(doc, layer):
         if len(pix_data) == w * h * 4:
             for i in range(0, len(pix_data), 4):
                 if pix_data[i + 3] > 0:  # Alpha > 0
-                    pix_data[i]     = b_byte
+                    pix_data[i] = b_byte
                     pix_data[i + 1] = g_byte
                     pix_data[i + 2] = r_byte
             layer.setPixelData(QByteArray(pix_data), 0, 0, w, h)
     except Exception as e:
         log_error("refine_sketch", "Failed byte fill of HSL color on layer", e)
+
 
 def apply_duplicate_reflay(doc, app, active_layer):
     """
@@ -120,6 +124,7 @@ def apply_duplicate_reflay(doc, app, active_layer):
         log_error("refine_sketch", "Failed during duplicate_reflay step", e)
         return active_layer
 
+
 def apply_luminosity_overlay(doc, app, active_layer, view):
     """
     Creates temporary neutral gray layer, sets Luminosity blend mode & Inherit Alpha, and merges down.
@@ -134,9 +139,9 @@ def apply_luminosity_overlay(doc, app, active_layer, view):
         sample = temp_lum_layer.pixelData(0, 0, 1, 1)
         p_len = len(sample) if sample else 4
         if p_len == 4:
-            gray_pixel = b'\x80\x80\x80\xff'
+            gray_pixel = b"\x80\x80\x80\xff"
         else:
-            gray_pixel = b'\x80\x80\x80' + b'\xff' * (p_len - 3)
+            gray_pixel = b"\x80\x80\x80" + b"\xff" * (p_len - 3)
         gray_bytes = gray_pixel * (w * h)
         temp_lum_layer.setPixelData(QByteArray(gray_bytes), 0, 0, w, h)
     except Exception as e:
@@ -165,6 +170,7 @@ def apply_luminosity_overlay(doc, app, active_layer, view):
         QApplication.processEvents()
         doc.waitForDone()
 
+
 def execute_refine_sketch(duplicate_reflay: bool = False):
     """
     Refine Sketch (North Operation):
@@ -191,7 +197,7 @@ def execute_refine_sketch(duplicate_reflay: bool = False):
         QMessageBox.warning(
             None,
             "Operations Pie Menu",
-            "Refine Sketch operation cannot be run on a Group Layer.\nPlease select a Paint Layer."
+            "Refine Sketch operation cannot be run on a Group Layer.\nPlease select a Paint Layer.",
         )
         return
 
@@ -199,7 +205,7 @@ def execute_refine_sketch(duplicate_reflay: bool = False):
         QMessageBox.warning(
             None,
             "Operations Pie Menu",
-            "Refine Sketch cannot be run on an empty layer.\nPlease draw something on the layer first."
+            "Refine Sketch cannot be run on an empty layer.\nPlease draw something on the layer first.",
         )
         return
 

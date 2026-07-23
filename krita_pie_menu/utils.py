@@ -1,8 +1,10 @@
+import json
 import os
 import re
-import json
-from typing import Dict, Any, List, Optional
+from typing import Any, Dict, List, Optional
+
 from krita import Krita, ManagedColor
+
 
 def load_config(config_path: str, defaults: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     """
@@ -12,7 +14,7 @@ def load_config(config_path: str, defaults: Optional[Dict[str, Any]] = None) -> 
         defaults = {}
     if os.path.exists(config_path):
         try:
-            with open(config_path, 'r', encoding='utf-8') as f:
+            with open(config_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
                 if isinstance(data, dict):
                     return data
@@ -20,27 +22,30 @@ def load_config(config_path: str, defaults: Optional[Dict[str, Any]] = None) -> 
             pass
     return dict(defaults)
 
+
 def save_config(config_path: str, cfg: Dict[str, Any]) -> bool:
     """
     Safely write a JSON configuration file. Returns True if successful.
     """
     try:
         os.makedirs(os.path.dirname(config_path), exist_ok=True)
-        with open(config_path, 'w', encoding='utf-8') as f:
+        with open(config_path, "w", encoding="utf-8") as f:
             json.dump(cfg, f, indent=2)
         return True
     except Exception:
         return False
+
 
 def get_incremental_layer_name(layer_name: str) -> str:
     """
     Parses an existing layer name for the last integer sequence and increments it by 1.
     If no number is found, defaults to '1'.
     """
-    matches = re.findall(r'\d+', layer_name.strip())
+    matches = re.findall(r"\d+", layer_name.strip())
     if matches:
         return str(int(matches[-1]) + 1)
     return "1"
+
 
 def create_incremental_layer(doc, reference_layer=None):
     """
@@ -66,6 +71,7 @@ def create_incremental_layer(doc, reference_layer=None):
     doc.refreshProjection()
     return new_layer
 
+
 def resolve_action(app, candidate_ids: List[str]):
     """
     Finds and returns the first valid Krita action matching any ID in candidate_ids.
@@ -77,6 +83,7 @@ def resolve_action(app, candidate_ids: List[str]):
         if action:
             return action
     return None
+
 
 def find_brush_preset(app, preset_name: str = "0 STD DRW"):
     """
@@ -107,6 +114,7 @@ def find_brush_preset(app, preset_name: str = "0 STD DRW"):
 
     return None
 
+
 def set_foreground_black(doc, view):
     """
     Sets the active view's foreground color to solid black.
@@ -119,3 +127,24 @@ def set_foreground_black(doc, view):
         view.setForeGroundColor(col)
     except Exception:
         pass
+
+
+def make_doc_active_validator(extra_checks=None):
+    """
+    Returns a validator function ensuring an active document and active layer exist.
+    Optional `extra_checks(doc, node)` callback can perform operation-specific validation.
+    """
+
+    def validator():
+        app = Krita.instance()
+        doc = app.activeDocument()
+        if not doc:
+            return False, "No active document."
+        node = doc.activeNode()
+        if not node:
+            return False, "No active layer selected."
+        if extra_checks:
+            return extra_checks(doc, node)
+        return True, ""
+
+    return validator

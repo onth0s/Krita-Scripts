@@ -1,17 +1,37 @@
 import math
-from PyQt5.QtCore import Qt, QPoint
-from PyQt5.QtGui import QCursor, QPainter, QPen, QBrush, QColor
-from PyQt5.QtWidgets import QWidget, QPushButton
+from typing import Any, Callable, Dict, Optional, Tuple
+
+from PyQt5.QtCore import QPoint, Qt
+from PyQt5.QtGui import QBrush, QColor, QCursor, QPainter, QPen
+from PyQt5.QtWidgets import QPushButton, QWidget
+
 from .toast_notification import ToastNotification
+
+WIDGET_SIZE = 520
+CENTER_OFFSET = 260
+BUTTON_WIDTH = 150
+BUTTON_HEIGHT = 36
+DEADZONE_RADIUS = 45
+
 
 class PieMenuWidget(QWidget):
     """
     Generic Blender-style 8-sector radial Pie Menu widget for Krita plugins.
     Supports Space key hold-gesture, F11/Right-Click/Esc interrupt cancellation,
-    circular neutral deadzone, accent colors, toggle states with underscore/sidescore visual indicators,
+    circular neutral deadzone, accent colors, toggle states with visual indicators,
     and greyed-out disabled sector state polling with Toast Notifications.
     """
-    def __init__(self, callbacks, items_meta=None, validators=None, toggle_states=None, accent_color="#3182CE", object_name="PieMenuWidget", parent=None):
+
+    def __init__(
+        self,
+        callbacks: Dict[str, Callable[[], None]],
+        items_meta: Optional[Dict[str, Tuple[str, str]]] = None,
+        validators: Optional[Dict[str, Callable[[], Any]]] = None,
+        toggle_states: Optional[Dict[str, bool]] = None,
+        accent_color: str = "#3182CE",
+        object_name: str = "PieMenuWidget",
+        parent: Optional[QWidget] = None,
+    ) -> None:
         super().__init__(parent, Qt.FramelessWindowHint | Qt.Popup | Qt.NoDropShadowWindowHint)
         self.setObjectName(object_name)
         self.setAttribute(Qt.WA_TranslucentBackground, True)
@@ -22,15 +42,15 @@ class PieMenuWidget(QWidget):
         self.validators = validators or {}
         self.toggle_states = toggle_states or {}
         self.accent_color = accent_color
-        self.sector_states = {}  # key -> (is_enabled, disabled_reason)
-        self.buttons = {}
-        self.active_direction = None
-        self.is_interrupted = False
+        self.sector_states: Dict[str, Tuple[bool, str]] = {}
+        self.buttons: Dict[str, QPushButton] = {}
+        self.active_direction: Optional[str] = None
+        self.is_interrupted: bool = False
         self.evaluate_sector_states()
         self.init_ui()
 
     def evaluate_sector_states(self):
-        directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
+        directions = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
         for key in directions:
             validator = self.validators.get(key)
             if validator:
@@ -56,7 +76,7 @@ class PieMenuWidget(QWidget):
         # Lighter tint of the accent used for toggle underscore indicators
         light_accent = accent.lighter(170)
         la_r, la_g, la_b = light_accent.red(), light_accent.green(), light_accent.blue()
-        
+
         btn_style = f"""
             QWidget#{obj_name} {{
                 background: transparent;
@@ -106,14 +126,14 @@ class PieMenuWidget(QWidget):
 
         # 8 Directional Positions relative to center (260, 260)
         positions = {
-            'N':  (center_x - btn_w // 2, center_y - 150),  # North
-            'NE': (center_x + 75,         center_y - 95),   # North-East
-            'E':  (center_x + 95,         center_y - btn_h // 2), # East
-            'SE': (center_x + 75,         center_y + 59),   # South-East
-            'S':  (center_x - btn_w // 2, center_y + 114),  # South
-            'SW': (center_x - 225,        center_y + 59),   # South-West
-            'W':  (center_x - 245,        center_y - btn_h // 2), # West
-            'NW': (center_x - 225,        center_y - 95),   # North-West
+            "N": (center_x - btn_w // 2, center_y - 150),  # North
+            "NE": (center_x + 75, center_y - 95),  # North-East
+            "E": (center_x + 95, center_y - btn_h // 2),  # East
+            "SE": (center_x + 75, center_y + 59),  # South-East
+            "S": (center_x - btn_w // 2, center_y + 114),  # South
+            "SW": (center_x - 225, center_y + 59),  # South-West
+            "W": (center_x - 245, center_y - btn_h // 2),  # West
+            "NW": (center_x - 225, center_y - 95),  # North-West
         }
 
         for key, (x, y) in positions.items():
@@ -153,6 +173,7 @@ class PieMenuWidget(QWidget):
                     callback()
             else:
                 ToastNotification.show_toast(reason or "Action is disabled in current context.", toast_type="warning")
+
         return handler
 
     def show_at_cursor(self):
@@ -182,7 +203,7 @@ class PieMenuWidget(QWidget):
         painter.setRenderHint(QPainter.Antialiasing)
 
         center = QPoint(260, 260)
-        
+
         # Circular neutral center zone rendering (Radius 26px)
         accent = QColor(self.accent_color)
         if self.active_direction is None:
@@ -219,7 +240,7 @@ class PieMenuWidget(QWidget):
 
     def update_selection_from_mouse(self):
         cursor_pos = QCursor.pos()
-        origin = getattr(self, 'origin_pos', None)
+        origin = getattr(self, "origin_pos", None)
         if origin is None:
             origin = self.mapToGlobal(QPoint(260, 260))
 
@@ -236,21 +257,21 @@ class PieMenuWidget(QWidget):
             angle = math.degrees(math.atan2(dy, dx))
             # 8 Sectors of 45 degrees each
             if -112.5 <= angle < -67.5:
-                self.active_direction = 'N'
+                self.active_direction = "N"
             elif -67.5 <= angle < -22.5:
-                self.active_direction = 'NE'
+                self.active_direction = "NE"
             elif -22.5 <= angle < 22.5:
-                self.active_direction = 'E'
+                self.active_direction = "E"
             elif 22.5 <= angle < 67.5:
-                self.active_direction = 'SE'
+                self.active_direction = "SE"
             elif 67.5 <= angle < 112.5:
-                self.active_direction = 'S'
+                self.active_direction = "S"
             elif 112.5 <= angle < 157.5:
-                self.active_direction = 'SW'
+                self.active_direction = "SW"
             elif angle >= 157.5 or angle < -157.5:
-                self.active_direction = 'W'
+                self.active_direction = "W"
             elif -157.5 <= angle < -112.5:
-                self.active_direction = 'NW'
+                self.active_direction = "NW"
 
         if self.active_direction != old_direction:
             self.update_button_highlights()
@@ -258,14 +279,14 @@ class PieMenuWidget(QWidget):
 
     def update_button_highlights(self):
         for key, btn in self.buttons.items():
-            is_active = (key == self.active_direction)
+            is_active = key == self.active_direction
             btn.setProperty("active", is_active)
             btn.style().unpolish(btn)
             btn.style().polish(btn)
 
     def interrupt_and_wait_for_release(self):
         """Visually hide the menu on interrupt, but keep listening until key release."""
-        if not getattr(self, 'is_interrupted', False):
+        if not getattr(self, "is_interrupted", False):
             self.is_interrupted = True
             self.active_direction = None
             self.hide()
@@ -275,7 +296,7 @@ class PieMenuWidget(QWidget):
             event.ignore()
             return
 
-        if getattr(self, 'is_interrupted', False):
+        if getattr(self, "is_interrupted", False):
             self.cleanup_and_close()
             return
 
@@ -312,8 +333,12 @@ class PieMenuWidget(QWidget):
         target_direction = self.active_direction
         is_enabled, reason = self.sector_states.get(target_direction, (True, "")) if target_direction else (True, "")
         target_cb = self.callbacks.get(target_direction) if target_direction else None
-        label = self.items_meta[target_direction][0] if target_direction and target_direction in self.items_meta else target_direction
-        
+        label = (
+            self.items_meta[target_direction][0]
+            if target_direction and target_direction in self.items_meta
+            else target_direction
+        )
+
         self.cleanup_and_close()
         if target_direction:
             if is_enabled:

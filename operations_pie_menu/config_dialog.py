@@ -1,21 +1,13 @@
-from PyQt5.QtWidgets import QLabel, QLineEdit, QGridLayout
-from krita_pie_menu import BasePieConfigDialog
+from PyQt5.QtWidgets import QGridLayout, QLabel, QLineEdit
 
-SECTOR_NAMES = [
-    ("N",  "North (Up)"),
-    ("NE", "North-East"),
-    ("E",  "East (Right)"),
-    ("SE", "South-East"),
-    ("S",  "South (Down)"),
-    ("SW", "South-West"),
-    ("W",  "West (Left)"),
-    ("NW", "North-West"),
-]
+from krita_pie_menu import SECTOR_NAMES, BasePieConfigDialog
+
 
 class OperationsConfigDialog(BasePieConfigDialog):
     """
     Interactive PyQt dialog for configuring action IDs and labels of the Operations Pie Menu.
     """
+
     def __init__(self, config_path, on_save_callback=None, parent=None):
         self.inputs = {}
         super().__init__(
@@ -23,7 +15,7 @@ class OperationsConfigDialog(BasePieConfigDialog):
             title="Configure Operations Pie Menu",
             on_save_callback=on_save_callback,
             parent=parent,
-            accent_color="#805AD5"
+            accent_color="#805AD5",
         )
 
     def build_sector_editors(self, grid: QGridLayout):
@@ -31,10 +23,10 @@ class OperationsConfigDialog(BasePieConfigDialog):
             data = self.current_config.get(code, {})
             lbl = QLabel(f"<b>{name} ({code}):</b>", self)
 
-            lbl_edit = QLineEdit(data.get('label', ''), self)
+            lbl_edit = QLineEdit(data.get("label", ""), self)
             lbl_edit.setPlaceholderText("Button Label")
 
-            act_edit = QLineEdit(data.get('action_id', ''), self)
+            act_edit = QLineEdit(data.get("action_id", ""), self)
             act_edit.setPlaceholderText("Action ID or custom command")
 
             grid.addWidget(lbl, idx, 0)
@@ -46,8 +38,5 @@ class OperationsConfigDialog(BasePieConfigDialog):
     def collect_config(self):
         cfg = {}
         for code, (lbl_edit, act_edit) in self.inputs.items():
-            cfg[code] = {
-                "label": lbl_edit.text().strip(),
-                "action_id": act_edit.text().strip()
-            }
+            cfg[code] = {"label": lbl_edit.text().strip(), "action_id": act_edit.text().strip()}
         return cfg

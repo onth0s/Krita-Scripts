@@ -1,21 +1,13 @@
-from PyQt5.QtWidgets import QLabel, QLineEdit, QCheckBox, QGridLayout
-from krita_pie_menu import BasePieConfigDialog
+from PyQt5.QtWidgets import QCheckBox, QGridLayout, QLabel, QLineEdit
 
-SECTOR_NAMES = [
-    ("N",  "North (Up)"),
-    ("NE", "North-East (Duplicate RefLay)"),
-    ("E",  "East (Right)"),
-    ("SE", "South-East"),
-    ("S",  "South (Down)"),
-    ("SW", "South-West"),
-    ("W",  "West (Left)"),
-    ("NW", "North-West"),
-]
+from krita_pie_menu import SECTOR_NAMES, BasePieConfigDialog
+
 
 class ConditionsConfigDialog(BasePieConfigDialog):
     """
     Interactive PyQt dialog for configuring condition flags and sector labels of the Conditions Pie Menu.
     """
+
     def __init__(self, config_path, on_save_callback=None, parent=None):
         self.inputs = {}
         self.chk_dup_reflay = None
@@ -24,7 +16,7 @@ class ConditionsConfigDialog(BasePieConfigDialog):
             title="Configure Conditions Pie Menu",
             on_save_callback=on_save_callback,
             parent=parent,
-            accent_color="#D69E2E"
+            accent_color="#D69E2E",
         )
 
     def build_sector_editors(self, grid: QGridLayout):
@@ -38,10 +30,10 @@ class ConditionsConfigDialog(BasePieConfigDialog):
             data = self.current_config.get(code, {})
             lbl = QLabel(f"<b>{name}:</b>", self)
 
-            lbl_edit = QLineEdit(data.get('label', ''), self)
+            lbl_edit = QLineEdit(data.get("label", ""), self)
             lbl_edit.setPlaceholderText("Condition Label")
 
-            act_edit = QLineEdit(data.get('action_id', ''), self)
+            act_edit = QLineEdit(data.get("action_id", ""), self)
             act_edit.setPlaceholderText("Action ID")
 
             grid.addWidget(lbl, idx, 0)
@@ -51,12 +43,7 @@ class ConditionsConfigDialog(BasePieConfigDialog):
             self.inputs[code] = (lbl_edit, act_edit)
 
     def collect_config(self):
-        cfg = {
-            "duplicate_reflay": self.chk_dup_reflay.isChecked()
-        }
+        cfg = {"duplicate_reflay": self.chk_dup_reflay.isChecked()}
         for code, (lbl_edit, act_edit) in self.inputs.items():
-            cfg[code] = {
-                "label": lbl_edit.text().strip(),
-                "action_id": act_edit.text().strip()
-            }
+            cfg[code] = {"label": lbl_edit.text().strip(), "action_id": act_edit.text().strip()}
         return cfg

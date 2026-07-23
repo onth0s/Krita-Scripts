@@ -1,10 +1,13 @@
 from krita import Extension, Krita
+
 from krita_pie_menu import ToastNotification, create_incremental_layer
+
 
 class QuickScriptEngineExtension(Extension):
     """
     General purpose arbitrary script engine for Krita workflow automation.
     """
+
     def __init__(self, parent):
         super().__init__(parent)
 

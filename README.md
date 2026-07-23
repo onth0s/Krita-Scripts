@@ -52,8 +52,9 @@ An 8-sector radial Pie Menu providing canvas and layer workflow operations:
 
 ### 3. 🥧 Conditions Pie Menu (`conditions_pie_menu`)
 An 8-sector radial Pie Menu mapped to **`Ctrl+Tab`** for toggling global workflow condition flags:
-- **Duplicate RefLay (North East / `NE`):** Toggles layer duplication step in Refine Sketch OP. Displays visual toggle underscore/sidescore indicator and toast notification.
-- **Stub Sectors (`N`, `E`, `SE`, `S`, `SW`, `W`, `NW`):** Prepared slots for future workflow flags.
+- **Duplicate RefLay (North East / `NE`):** Toggles layer duplication step in Refine Sketch OP.
+- **Keep Aspect Ratio (West / `W`):** Toggles uniform aspect ratio preservation vs default scaling in Fit Layer to Canvas OP.
+- **Stub Sectors (`N`, `E`, `SE`, `S`, `SW`, `NW`):** Prepared slots for future workflow flags with non-blocking ToastNotifications.
 
 ---
 

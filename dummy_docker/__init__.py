@@ -1,8 +1,8 @@
-from krita import Krita, DockWidgetFactory, DockWidgetFactoryBase
+from krita import DockWidgetFactory, DockWidgetFactoryBase, Krita
+
 from .dummy_docker import DummyDocker
 
-DOCKER_ID = 'dummy_docker'
+DOCKER_ID = "dummy_docker"
 
-instance = Krita.instance()
 factory = DockWidgetFactory(DOCKER_ID, DockWidgetFactoryBase.DockRight, DummyDocker)
-instance.addDockWidgetFactory(factory)
+Krita.instance().addDockWidgetFactory(factory)

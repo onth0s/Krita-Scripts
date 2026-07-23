@@ -1,18 +1,22 @@
-from krita import Krita
-from PyQt5.QtWidgets import QMessageBox
-from PyQt5.QtGui import QImage
-from PyQt5.QtCore import Qt, QByteArray
-from krita_pie_menu import log_error, log_info, log_warning
+import os
 
-def validate_fit_layer():
-    app = Krita.instance()
-    doc = app.activeDocument()
-    if not doc:
-        return False, "No active document."
-    node = doc.activeNode()
-    if not node:
-        return False, "No active layer selected."
-    return True, ""
+from krita import Krita
+from PyQt5.QtCore import QByteArray, Qt
+from PyQt5.QtGui import QImage
+from PyQt5.QtWidgets import QMessageBox
+
+from krita_pie_menu import load_config, log_error, log_info, log_warning, make_doc_active_validator
+
+
+def _is_keep_aspect_ratio_enabled() -> bool:
+    pykrita_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+    cond_cfg_path = os.path.join(pykrita_dir, "conditions_pie_menu", "config.json")
+    cond_cfg = load_config(cond_cfg_path, {})
+    return bool(cond_cfg.get("keep_aspect_ratio", False))
+
+
+validate_fit_layer = make_doc_active_validator()
+
 
 def execute_fit_layer():
     """
@@ -50,6 +54,8 @@ def execute_fit_layer():
     target_gx = (doc_w - target_gw) // 2
     target_gy = (doc_h - target_gh) // 2
 
+    aspect_mode = Qt.KeepAspectRatio if _is_keep_aspect_ratio_enabled() else Qt.IgnoreAspectRatio
+
     try:
         if active_layer.type() == "grouplayer":
             parent = active_layer.parentNode() or doc.rootNode()
@@ -76,7 +82,7 @@ def execute_fit_layer():
                 raw_bytes = bytearray(child.pixelData(cx, cy, cw, ch))
                 img = QImage(raw_bytes, cw, ch, cw * 4, QImage.Format_ARGB32).copy()
 
-                scaled_img = img.scaled(new_cw, new_ch, Qt.IgnoreAspectRatio, Qt.SmoothTransformation)
+                scaled_img = img.scaled(new_cw, new_ch, aspect_mode, Qt.SmoothTransformation)
                 if scaled_img.format() != QImage.Format_ARGB32:
                     scaled_img = scaled_img.convertToFormat(QImage.Format_ARGB32)
 
@@ -84,7 +90,7 @@ def execute_fit_layer():
                 ptr.setsize(new_cw * new_ch * 4)
                 new_bytes = QByteArray(bytes(ptr))
 
-                clear_bytes = b'\x00' * (cw * ch * 4)
+                clear_bytes = b"\x00" * (cw * ch * 4)
                 child.setPixelData(QByteArray(clear_bytes), cx, cy, cw, ch)
                 child.setPixelData(new_bytes, new_cx, new_cy, new_cw, new_ch)
 
@@ -99,7 +105,7 @@ def execute_fit_layer():
             raw_bytes = bytearray(active_layer.pixelData(gx, gy, gw, gh))
             img = QImage(raw_bytes, gw, gh, gw * 4, QImage.Format_ARGB32).copy()
 
-            scaled_img = img.scaled(target_gw, target_gh, Qt.IgnoreAspectRatio, Qt.SmoothTransformation)
+            scaled_img = img.scaled(target_gw, target_gh, aspect_mode, Qt.SmoothTransformation)
             if scaled_img.format() != QImage.Format_ARGB32:
                 scaled_img = scaled_img.convertToFormat(QImage.Format_ARGB32)
 

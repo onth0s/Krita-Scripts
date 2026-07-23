@@ -1,29 +1,42 @@
 import os
+
 from krita import Krita
 from PyQt5.QtWidgets import QMessageBox
-from krita_pie_menu import BasePieMenuExtension
+
+from krita_pie_menu import BasePieMenuExtension, make_doc_active_validator
+
 from .config_dialog import SectorConfigDialog
 
+
+def _filter_extra_checks(doc, node):
+    if node.type() == "grouplayer":
+        return False, "Filters cannot be applied directly to a Group Layer."
+    return True, ""
+
+
+validate_filter_context = make_doc_active_validator(_filter_extra_checks)
+
 DEFAULT_FILTERS_CONFIG = {
-    "N":  { "label": "HSV Adjustment",        "action_id": "hsv_adjustment" },
-    "NE": { "label": "Color Curves",          "action_id": "color_curves" },
-    "E":  { "label": "Color Balance",         "action_id": "color_balance" },
-    "SE": { "label": "Slope, Offset, Power",  "action_id": "slope_offset_power" },
-    "S":  { "label": "Desaturate",            "action_id": "desaturate" },
-    "SW": { "label": "Auto Contrast",         "action_id": "auto_contrast" },
-    "W":  { "label": "Levels",                "action_id": "levels" },
-    "NW": { "label": "Invert",                "action_id": "invert" }
+    "N": {"label": "HSV Adjustment", "action_id": "hsv_adjustment"},
+    "NE": {"label": "Color Curves", "action_id": "color_curves"},
+    "E": {"label": "Color Balance", "action_id": "color_balance"},
+    "SE": {"label": "Slope, Offset, Power", "action_id": "slope_offset_power"},
+    "S": {"label": "Desaturate", "action_id": "desaturate"},
+    "SW": {"label": "Auto Contrast", "action_id": "auto_contrast"},
+    "W": {"label": "Levels", "action_id": "levels"},
+    "NW": {"label": "Invert", "action_id": "invert"},
 }
+
 
 class FiltersPieMenuExtension(BasePieMenuExtension):
     def __init__(self, parent):
-        config_path = os.path.join(os.path.dirname(__file__), 'config.json')
+        config_path = os.path.join(os.path.dirname(__file__), "config.json")
         super().__init__(
             parent,
             config_path=config_path,
             default_config=DEFAULT_FILTERS_CONFIG,
             accent_color="#3182CE",
-            object_name="FiltersPieWidget"
+            object_name="FiltersPieWidget",
         )
 
     def createActions(self, window):
@@ -39,24 +52,12 @@ class FiltersPieMenuExtension(BasePieMenuExtension):
         items_meta = {}
         validators = {}
 
-        def validate_filter_context():
-            app = Krita.instance()
-            doc = app.activeDocument()
-            if not doc:
-                return False, "No active document."
-            node = doc.activeNode()
-            if not node:
-                return False, "No active layer selected."
-            if node.type() == "grouplayer":
-                return False, "Filters cannot be applied directly to a Group Layer."
-            return True, ""
-
         for code in config.keys():
             validators[code] = validate_filter_context
 
         for code, data in config.items():
-            act_id = data.get('action_id', '')
-            label = data.get('label', '')
+            act_id = data.get("action_id", "")
+            label = data.get("label", "")
             items_meta[code] = (label, act_id)
             callbacks[code] = self.make_trigger_callback(act_id, label)
 
@@ -76,7 +77,7 @@ class FiltersPieMenuExtension(BasePieMenuExtension):
             QMessageBox.warning(
                 None,
                 "Filters Pie Menu",
-                "Filters cannot be applied directly to a Group Layer.\nPlease select a Paint Layer inside the group."
+                "Filters cannot be applied directly to a Group Layer.\nPlease select a Paint Layer inside the group.",
             )
             return False
 
@@ -106,9 +107,9 @@ class FiltersPieMenuExtension(BasePieMenuExtension):
                 return True
 
         # Fallback search across all registered Krita actions
-        search_target = fallback_text.replace('.', '').replace('&', '').strip().lower()
+        search_target = fallback_text.replace(".", "").replace("&", "").strip().lower()
         for act in app.actions():
-            act_text = act.text().replace('&', '').replace('.', '').strip().lower()
+            act_text = act.text().replace("&", "").replace(".", "").strip().lower()
             act_id = act.objectName().lower()
             if search_target and (search_target in act_text or act_text in search_target):
                 act.trigger()
