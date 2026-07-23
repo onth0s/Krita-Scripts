@@ -40,7 +40,7 @@ def execute_sanitize_group():
     - Ensures a fresh empty paint layer at the top of drawing layers.
     - Renumbers non-protected layers 1..N (bottom-to-top in the UI).
     - Protected layer names ("WHITE", "B&W") are never renamed or removed.
-    - "B&W" layer is always kept at the VERY TOP of the group stack.
+    - "B&W" layer is ALWAYS kept at the absolute TOP-MOST position of the group stack.
     """
     app = Krita.instance()
     doc = app.activeDocument()
@@ -73,7 +73,7 @@ def execute_sanitize_group():
         fresh = doc.createNode("_top_", "paintlayer")
         group_layer.addChildNode(fresh, None)
 
-        # ── 3. Find B&W layer if present and move to absolute TOP ────────────
+        # ── 3. Find B&W layer if present and place DIRECTLY ABOVE fresh (absolute TOP) ──
         bw_node = None
         for child in group_layer.childNodes():
             if child.name().strip().upper() == "B&W":
@@ -81,7 +81,7 @@ def execute_sanitize_group():
                 break
 
         if bw_node:
-            group_layer.addChildNode(bw_node, None)
+            group_layer.addChildNode(bw_node, fresh)
 
         # ── 4. Renumber non-protected layers bottom-to-top (1, 2, 3 … N) ─────
         counter = 1
@@ -91,7 +91,7 @@ def execute_sanitize_group():
             child.setName(str(counter))
             counter += 1
 
-        # ── 5. Activate the fresh layer (topmost drawing layer) ───────────────
+        # ── 5. Activate the fresh layer (topmost drawing layer below B&W) ────
         doc.setActiveNode(fresh)
         doc.refreshProjection()
 
