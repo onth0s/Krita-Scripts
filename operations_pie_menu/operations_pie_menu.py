@@ -421,8 +421,12 @@ class OperationsPieMenuExtension(Extension):
             from PyQt5.QtCore import Qt, QByteArray
 
             if active_layer.type() == "grouplayer":
-                # Collect all child paint layers recursively inside group
-                child_paint_layers = active_layer.findChildNodes("", True, False, "paintlayer")
+                # 1. Duplicate group layer structure for full Ctrl+Z undo compatibility
+                parent = active_layer.parentNode() or doc.rootNode()
+                scaled_group = active_layer.duplicate()
+
+                # Collect all child paint layers recursively inside duplicated group
+                child_paint_layers = scaled_group.findChildNodes("", True, False, "paintlayer")
                 if not child_paint_layers:
                     QMessageBox.information(None, "Operations Pie Menu", "Group Layer contains no paint layers.")
                     return
@@ -457,6 +461,11 @@ class OperationsPieMenuExtension(Extension):
                     child.setPixelData(QByteArray(clear_bytes), cx, cy, cw, ch)
                     child.setPixelData(new_bytes, new_cx, new_cy, new_cw, new_ch)
 
+                # Substitute group node in stack to record a single undo step
+                parent.addChildNode(scaled_group, active_layer)
+                active_layer.remove()
+
+                doc.setActiveNode(scaled_group)
                 doc.refreshProjection()
 
             else:
