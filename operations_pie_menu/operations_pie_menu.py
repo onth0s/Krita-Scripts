@@ -347,16 +347,20 @@ class OperationsPieMenuExtension(Extension):
             target_x = (doc_w - sw) // 2
             target_y = (doc_h - sh) // 2
 
-            # 3. Extract scaled bytes safely from QImage
+            # 3. Extract scaled bytes safely
             ptr = scaled_img.constBits()
             ptr.setsize(sw * sh * 4)
-            new_bytes = QByteArray(bytes(ptr))
+            scaled_bytes = bytes(ptr)
 
-            # 4. Clear old bounds and write scaled pixels in-place on active_layer
-            clear_bytes = QByteArray(b'\x00' * (bw * bh * 4))
-            active_layer.setPixelData(clear_bytes, bx, by, bw, bh)
-            active_layer.setPixelData(new_bytes, target_x, target_y, sw, sh)
+            # 4. Build a full-canvas transparent buffer and blit scaled content into correct position.
+            # Writing the entire canvas in ONE setPixelData call = ONE single undo step (Ctrl+Z works).
+            full_buf = bytearray(doc_w * doc_h * 4)  # all zeros = fully transparent
+            for row in range(sh):
+                src_off = row * sw * 4
+                dst_off = ((target_y + row) * doc_w + target_x) * 4
+                full_buf[dst_off:dst_off + sw * 4] = scaled_bytes[src_off:src_off + sw * 4]
 
+            active_layer.setPixelData(QByteArray(full_buf), 0, 0, doc_w, doc_h)
             doc.refreshProjection()
         except Exception as e:
             QMessageBox.warning(None, "Operations Pie Menu", f"Failed to fit layer to canvas: {e}")
