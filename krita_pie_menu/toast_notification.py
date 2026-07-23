@@ -14,6 +14,8 @@ class ToastNotification(QWidget):
         self.setAttribute(Qt.WA_TranslucentBackground, True)
         self.setAttribute(Qt.WA_ShowWithoutActivating, True)
         self.setAttribute(Qt.WA_DeleteOnClose, True)
+        self.duration_ms = duration_ms
+        self.toast_type = toast_type
         
         # Border accent color based on toast type
         if toast_type == "success":
