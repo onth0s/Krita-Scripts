@@ -295,6 +295,7 @@ class OperationsPieMenuExtension(Extension):
         """
         West ('W') action:
         Fit/Scale active layer content to canvas dimensions while preserving aspect ratio.
+        Fully undoable (Ctrl+Z compatible).
         """
         app = Krita.instance()
         doc = app.activeDocument()
@@ -329,9 +330,11 @@ class OperationsPieMenuExtension(Extension):
             from PyQt5.QtGui import QImage
             from PyQt5.QtCore import Qt, QByteArray
 
-            raw_bytes = active_layer.pixelData(bx, by, bw, bh)
-            img = QImage(raw_bytes, bw, bh, QImage.Format_ARGB32)
+            # 1. Fetch pixel data into a persistent bytearray and create a deep copy QImage
+            raw_bytes = bytearray(active_layer.pixelData(bx, by, bw, bh))
+            img = QImage(raw_bytes, bw, bh, bw * 4, QImage.Format_ARGB32).copy()
 
+            # 2. Scale preserving aspect ratio smoothly
             scaled_img = img.scaled(doc_w, doc_h, Qt.KeepAspectRatio, Qt.SmoothTransformation)
             sw = scaled_img.width()
             sh = scaled_img.height()
@@ -339,16 +342,28 @@ class OperationsPieMenuExtension(Extension):
             target_x = (doc_w - sw) // 2
             target_y = (doc_h - sh) // 2
 
-            # Clear original bounds if different position/size
-            clear_bytes = b'\x00' * (bw * bh * 4)
-            active_layer.setPixelData(QByteArray(clear_bytes), bx, by, bw, bh)
+            # 3. Extract scaled bytes safely from QImage
+            ptr = scaled_img.constBits()
+            ptr.setsize(scaled_img.byteCount())
+            new_bytes = QByteArray(bytes(ptr))
 
-            # Write scaled pixels
-            bits = scaled_img.bits()
-            bits.setsize(scaled_img.byteCount())
-            new_bytes = bytes(bits)
+            # 4. Create new paint layer with same name for full Ctrl+Z undo compatibility
+            parent = active_layer.parentNode()
+            if not parent:
+                parent = doc.rootNode()
 
-            active_layer.setPixelData(QByteArray(new_bytes), target_x, target_y, sw, sh)
+            scaled_layer = doc.createNode(active_layer.name(), "paintlayer")
+            scaled_layer.setPixelData(new_bytes, target_x, target_y, sw, sh)
+
+            try:
+                scaled_layer.setAlphaLocked(active_layer.alphaLocked())
+            except Exception:
+                pass
+
+            parent.addChildNode(scaled_layer, active_layer)
+            active_layer.remove()
+
+            doc.setActiveNode(scaled_layer)
             doc.refreshProjection()
         except Exception as e:
             QMessageBox.warning(None, "Operations Pie Menu", f"Failed to fit layer to canvas: {e}")
