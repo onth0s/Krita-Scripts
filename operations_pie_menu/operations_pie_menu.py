@@ -113,14 +113,20 @@ class OperationsPieMenuExtension(Extension):
 
     def execute_north_operation(self):
         """
-        North ('N') stub action:
-        1. Set current layer to Alpha Locked.
-        2. Fill current layer with purple (#6c37bb).
-        3. Parse current layer name integer, increment by +1 for new layer name.
-        4. Create new paint layer directly above current layer.
-        5. Set active layer to new layer.
-        6. Reset foreground color to Black.
+        Refine Sketch ('N') operation:
+        1. Enable alpha lock on active layer.
+        2. Fill with random HSL [RANDOM (0-255), 100%, 50%].
+        3. Create a new layer above.
+        4. Fill it with #808080.
+        5. Set it to Luminosity Blend Mode.
+        6. Merge it with the one below.
+        7. Create a new layer (with +1 protocol matching quick_script_engine).
+        8. Set said layer to active, set '0 STD DRW' brush preset, set current color to black.
         """
+        import random
+        import colorsys
+        import re
+
         app = Krita.instance()
         doc = app.activeDocument()
         if not doc:
@@ -140,86 +146,150 @@ class OperationsPieMenuExtension(Extension):
             )
             return
 
-        # 1. Set current layer to Alpha Locked
+        # 1. Enable alpha lock on active layer
         try:
             active_layer.setAlphaLocked(True)
         except Exception:
             pass
 
-        # 2. Set foreground color to #6c37bb (R:108, G:55, B:187) and fill
         window = app.activeWindow()
-        if window:
-            view = window.activeView()
-            if view:
-                try:
-                    from krita import ManagedColor
-                    purple = ManagedColor(doc.colorModel(), doc.colorDepth(), doc.colorProfile())
-                    purple.setComponents([108/255.0, 55/255.0, 187/255.0, 1.0])
-                    view.setForeGroundColor(purple)
-                except Exception:
-                    pass
+        view = window.activeView() if window else None
 
-        fill_act = app.action("fill_selection_foreground_color")
-        if not fill_act:
-            fill_act = app.action("edit_fill_selection_foreground_color")
-        if fill_act:
-            fill_act.trigger()
+        # 2. Fill active layer with random HSL: [RANDOM (0-255), 100%, 50%]
+        # Use golden-ratio hue stepping to ensure perceptually maximally-distinct
+        # colors across successive calls, avoiding green/cyan clustering of uniform random.
+        _GOLDEN_RATIO = 0.618033988749895
+        hue_norm = (random.random() + _GOLDEN_RATIO) % 1.0
+        r, g, b = colorsys.hls_to_rgb(hue_norm, 0.5, 1.0)
+        r_byte = int(r * 255)
+        g_byte = int(g * 255)
+        b_byte = int(b * 255)
 
-        # 3. Parse current layer name as integer and increment
-        curr_name = active_layer.name().strip()
-        import re
+        w, h = doc.width(), doc.height()
+        try:
+            pix_data = bytearray(active_layer.pixelData(0, 0, w, h))
+            p_len = len(pix_data) // (w * h) if (w * h) > 0 else 4
+            if p_len == 4:
+                # Krita pixelData is BGRA order for 8-bit channels
+                for i in range(0, len(pix_data), 4):
+                    if pix_data[i + 3] > 0:  # alpha channel is index 3
+                        pix_data[i]     = b_byte  # B
+                        pix_data[i + 1] = g_byte  # G
+                        pix_data[i + 2] = r_byte  # R
+                active_layer.setPixelData(QByteArray(pix_data), 0, 0, w, h)
+        except Exception:
+            pass
+
+        # 3. Create a new layer above
+        parent = active_layer.parentNode()
+        if not parent:
+            parent = doc.rootNode()
+
+        temp_lum_layer = doc.createNode("Refine_Lum_Temp", "paintlayer")
+        parent.addChildNode(temp_lum_layer, active_layer)
+        doc.setActiveNode(temp_lum_layer)
+
+        # 4. Fill it with #808080 (R:128, G:128, B:128) directly via pixelData
+        w, h = doc.width(), doc.height()
+        try:
+            sample = temp_lum_layer.pixelData(0, 0, 1, 1)
+            p_len = len(sample) if sample else 4
+            if p_len == 4:
+                gray_pixel = b'\x80\x80\x80\xff'
+            else:
+                gray_pixel = b'\x80\x80\x80' + b'\xff' * (p_len - 3)
+            gray_bytes = gray_pixel * (w * h)
+            temp_lum_layer.setPixelData(QByteArray(gray_bytes), 0, 0, w, h)
+        except Exception:
+            pass
+
+        # 5. Set it to Luminosity Blend Mode
+        # Per KoCompositeOpRegistry.h: COMPOSITE_LUMINIZE = "luminize"
+        temp_lum_layer.setBlendingMode("luminize")
+
+        # Set inherit alpha to ON
+        try:
+            temp_lum_layer.setInheritAlpha(True)
+        except Exception:
+            pass
+
+        # Ensure UI state and projection are updated
+        from PyQt5.QtWidgets import QApplication
+        doc.setActiveNode(temp_lum_layer)
+        if view:
+            try:
+                view.setActiveNode(temp_lum_layer)
+            except Exception:
+                pass
+        doc.refreshProjection()
+        QApplication.processEvents()
+        doc.waitForDone()
+
+        # 6. Merge it with the one below
+        merge_act = app.action("layer_merge_down")
+        if not merge_act:
+            merge_act = app.action("merge_layer_down")
+        if not merge_act:
+            merge_act = app.action("merge_layer")
+
+        if merge_act:
+            merge_act.trigger()
+            QApplication.processEvents()
+            doc.waitForDone()
+
+        # 7. Create a new layer (with the +1 protocol, same as create_incremental_layer logic)
+        curr_layer = doc.activeNode()
+        if not curr_layer:
+            curr_layer = active_layer
+
+        curr_name = curr_layer.name().strip()
         matches = re.findall(r'\d+', curr_name)
         if matches:
             next_num = int(matches[-1]) + 1
         else:
-            next_num = 2
+            next_num = 1
 
         new_layer_name = str(next_num)
 
-        # 4. Create new paint layer directly above active_layer
         new_layer = doc.createNode(new_layer_name, "paintlayer")
-        parent = active_layer.parentNode()
-        if not parent:
-            parent = doc.rootNode()
-        parent.addChildNode(new_layer, active_layer)
+        new_parent = curr_layer.parentNode()
+        if not new_parent:
+            new_parent = doc.rootNode()
+        new_parent.addChildNode(new_layer, curr_layer)
 
-        # 5. Set active layer to new layer
+        # 8. Set said layer to active, set '0 STD DRW' to active brush, set current color to black
         doc.setActiveNode(new_layer)
         doc.refreshProjection()
 
-        # 6. Reset color back to Black (#000000)
         reset_act = app.action("reset_fg_bg")
         if reset_act:
             reset_act.trigger()
 
-        if window:
-            view = window.activeView()
-            if view:
-                try:
-                    from krita import ManagedColor
-                    black = ManagedColor(doc.colorModel(), doc.colorDepth(), doc.colorProfile())
-                    black.setComponents([0.0, 0.0, 0.0, 1.0])
-                    view.setForeGroundColor(black)
-                except Exception:
-                    pass
+        if view:
+            try:
+                from krita import ManagedColor
+                black = ManagedColor(doc.colorModel(), doc.colorDepth(), doc.colorProfile())
+                black.setComponents([0.0, 0.0, 0.0, 1.0])
+                view.setForeGroundColor(black)
+            except Exception:
+                pass
 
-                # 7. Select "0 STD DRW" brush preset
-                try:
-                    resources = app.resources("preset")
-                    preset_to_activate = None
+            try:
+                resources = app.resources("preset")
+                preset_to_activate = None
+                for name, res in resources.items():
+                    if "0 std drw" in name.lower() or name.lower() == "0 std drw":
+                        preset_to_activate = res
+                        break
+                if not preset_to_activate:
                     for name, res in resources.items():
-                        if "0 std drw" in name.lower() or name.lower() == "0 std drw":
+                        if "std drw" in name.lower():
                             preset_to_activate = res
                             break
-                    if not preset_to_activate:
-                        for name, res in resources.items():
-                            if "std drw" in name.lower():
-                                preset_to_activate = res
-                                break
-                    if preset_to_activate:
-                        view.activateResource(preset_to_activate)
-                except Exception:
-                    pass
+                if preset_to_activate:
+                    view.activateResource(preset_to_activate)
+            except Exception:
+                pass
 
     def execute_west_operation(self):
         """
