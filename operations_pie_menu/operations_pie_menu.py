@@ -148,6 +148,47 @@ class OperationsPieMenuExtension(Extension):
             )
             return
 
+        # 0. Check for active selection: if present, cut, paste onto new layer, rename (+1 protocol), and deselect
+        sel = doc.selection()
+        if sel and sel.width() > 0 and sel.height() > 0:
+            from PyQt5.QtWidgets import QApplication
+            curr_name = active_layer.name().strip()
+            matches = re.findall(r'\d+', curr_name)
+            if matches:
+                next_num = int(matches[-1]) + 1
+            else:
+                next_num = 1
+            new_layer_name = str(next_num)
+
+            cut_act = app.action("edit_cut")
+            if not cut_act:
+                cut_act = app.action("cut")
+            paste_act = app.action("edit_paste")
+            if not paste_act:
+                paste_act = app.action("paste")
+
+            if cut_act and paste_act:
+                cut_act.trigger()
+                QApplication.processEvents()
+                doc.waitForDone()
+
+                paste_act.trigger()
+                QApplication.processEvents()
+                doc.waitForDone()
+
+                pasted_layer = doc.activeNode()
+                if pasted_layer and pasted_layer != active_layer:
+                    pasted_layer.setName(new_layer_name)
+                    active_layer = pasted_layer
+
+                deselect_act = app.action("deselect")
+                if deselect_act:
+                    deselect_act.trigger()
+                else:
+                    doc.setSelection(None)
+                QApplication.processEvents()
+                doc.waitForDone()
+
         # 1. Enable alpha lock on active layer
         try:
             active_layer.setAlphaLocked(True)
