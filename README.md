@@ -33,10 +33,32 @@ A Blender-style 8-sector radial Pie Menu mapped to the **`Space`** key for insta
 
 ---
 
-### 2. 🔌 Hello World Extension (`hello_extension`)
+### 2. 🥧 Operations Pie Menu (`operations_pie_menu`)
+An 8-sector radial Pie Menu providing canvas and layer workflow operations:
+- **Refine Sketch (North / `N`):**
+  1. Enables Alpha Lock on the active layer.
+  2. Fills sketch lines with a perceptually distributed random HSL color (`[0-255], 100%, 50%`) using golden-ratio hue stepping.
+  3. Creates a temporary layer above and fills it with neutral gray (`#808080`).
+  4. Sets the temporary layer to `Luminosity` blend mode (`luminize`) and enables `Inherit Alpha`.
+  5. Merges the layer down into the sketch layer.
+  6. Creates a new paint layer directly above using `+1` incremental naming protocol.
+  7. Activates the new layer, switches brush preset to `'0 STD DRW'`, and resets foreground color to black (`#000000`).
+- **Init Canvas (South / `S`):** Sets up standard canvas layout.
+- **B&W Preview (South East / `SE`):** Toggles or creates a top-level color override layer for value checking.
+- **Fit Layer to Canvas (West / `W`):** Scales/fits active layer bounds to canvas size.
+
+---
+
+### 3. ⚡ Quick Script Engine (`quick_script_engine`)
+Workflow automation extension providing utility commands:
+- **Create Incremental Layer:** Parses integer suffix on the active layer name and creates a new paint layer with incremented `+1` name.
+
+---
+
+### 4. 🔌 Hello World Extension (`hello_extension`)
 Minimalist script extension template registered under **Tools → Scripts → Hello World Script**. Demonstrates action registration and active document state inspection.
 
-### 3. 🖼️ Dummy Docker Panel (`dummy_docker`)
+### 5. 🖼️ Dummy Docker Panel (`dummy_docker`)
 Dockable side panel UI template registered under **Settings → Dockers → Dummy Docker Panel**. Demonstrates PyQt widget layout, button signals, and canvas change tracking.
 
 ---
