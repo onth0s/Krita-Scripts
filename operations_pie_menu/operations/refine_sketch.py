@@ -213,6 +213,12 @@ def execute_refine_sketch(duplicate_reflay: bool = False):
     curr_layer = doc.activeNode() or active_layer
     new_layer = create_incremental_layer(doc, curr_layer)
 
+    # Step 7b: Renumber all siblings to 1..N
+    parent = new_layer.parentNode() or doc.rootNode()
+    for idx, child in enumerate(parent.childNodes(), start=1):
+        child.setName(str(idx))
+    doc.setActiveNode(new_layer)
+
     # Step 8: Reset tools & brush preset
     reset_act = app.action("reset_fg_bg")
     if reset_act:
