@@ -20,7 +20,8 @@ def validate_sanitize_group():
 def execute_sanitize_group():
     """
     Sanitize Group (NE Operation):
-    Renames all direct child layers inside the target group to sequential integers 1..N.
+    Removes empty layers, ensures an empty paint layer at top, sets it active,
+    then renames all direct child layers to sequential integers 1..N.
     """
     app = Krita.instance()
     doc = app.activeDocument()
@@ -49,8 +50,31 @@ def execute_sanitize_group():
         return
 
     try:
+        def is_layer_empty(node):
+            b = node.bounds()
+            return b.width() <= 0 or b.height() <= 0
+
+        # Ensure an empty paint layer sits at the top of the group
+        top = children[0]
+        if not is_layer_empty(top):
+            top = doc.createNode("temp", "paintlayer")
+            group_layer.addChildNode(top, children[0])
+            log_info("sanitize_group", "Created new empty paint layer at top of group.")
+
+        # Remove all empty layers except the top one (reverse for safe index removal)
+        for child in reversed(children):
+            if child == top:
+                continue
+            if is_layer_empty(child):
+                child.remove()
+
+        doc.setActiveNode(top)
+
+        # Renumber remaining layers to 1..N
+        children = group_layer.childNodes()
         for idx, child in enumerate(children, start=1):
             child.setName(str(idx))
+
         doc.refreshProjection()
         log_info("sanitize_group", f"Sanitized {len(children)} child layers in group '{group_layer.name()}'")
     except Exception as e:
