@@ -153,7 +153,7 @@ Complex operations are decomposed into dedicated single-responsibility modules:
 2. **Batch & Refresh**: Call `document.refreshProjection()` or `document.waitForDone()` after bulk pixel/layer updates.
 3. **Succinct & Modular**: Inherit from `BasePieMenuExtension` for new pie menus, and place operation logic in subpackages rather than monolithic files.
 4. **Structured Logging**: Use `log_info`, `log_warning`, and `log_error` from `krita_pie_menu` rather than swallowing exceptions.
-5. **Ruff Linting & Formatting**: Regularly run `ruff check --fix .` and `ruff format .` after modifying Python code to enforce import hygiene, type consistency, and code style.
+6. **Never Call `self.hide()` During Pie Menu Interrupts**: Calling `QWidget.hide()` automatically revokes `grabKeyboard()`. To visually hide the Pie Menu while keeping background event listening active until `onSpaceRelease`, set `self.setWindowOpacity(0.0)` and `self.move(-10000, -10000)` instead.
 
 ---
 
@@ -257,3 +257,44 @@ for child in list(group_layer.childNodes()):   # ← list() snapshot
 ```
 
 Iterating the live result of `childNodes()` while removing nodes causes Krita to skip or double-visit nodes within the same loop.
+
+---
+
+## 9. Pie Menu Interrupt Architecture — Do Not Repeat (CRITICAL)
+
+In PyQt5/PyQt6, calling `QWidget.hide()` (or `setVisible(False)`) **automatically releases any active keyboard grab** (`releaseKeyboard()`).
+
+### 9.1 The Fatal Bug Pattern (`self.hide()`)
+
+Do **NOT** call `self.hide()` inside `interrupt_and_wait_for_release()`:
+
+```python
+# ❌ NEVER DO THIS! Calling self.hide() causes Qt to instantly revoke grabKeyboard()!
+def interrupt_and_wait_for_release(self):
+    self.is_interrupted = True
+    self.hide()  # ← CRITICAL BUG! Destroys keyboard grab immediately during keyPressEvent
+```
+
+When `self.hide()` executes during an interrupt (e.g. when <kbd>F11</kbd>, <kbd>Esc</kbd>, or **Right-Click** is triggered while holding <kbd>Space</kbd>):
+1. Qt revokes `grabKeyboard()` instantly inside `hide()`.
+2. The widget becomes completely deaf to all subsequent key events.
+3. The widget **never receives the `keyReleaseEvent` for `Space` (`onSpaceRelease`)**.
+4. The background key-listening loop is broken, leaving Krita keyboard state corrupted or unreceptive.
+
+### 9.2 The Mandatory Pattern (`opacity = 0` + Offscreen Move)
+
+To visually hide the Pie Menu while maintaining background keyboard event listening until the trigger key is released:
+
+```python
+# ✅ CORRECT PATTERN: Make invisible & move offscreen to preserve grabKeyboard()
+def interrupt_and_wait_for_release(self):
+    if not getattr(self, "is_interrupted", False):
+        self.is_interrupted = True
+        self.active_direction = None
+        self.setWindowOpacity(0.0)
+        self.move(-10000, -10000)
+```
+
+1. Always restore opacity (`self.setWindowOpacity(1.0)`) in `show_at_cursor()`.
+2. ONLY call `self.cleanup_and_close()` (which invokes `releaseKeyboard()` and `close()`) inside `keyReleaseEvent()` when key release is captured.
+
