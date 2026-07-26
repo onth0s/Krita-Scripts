@@ -43,10 +43,11 @@ An 8-sector radial Pie Menu providing canvas and layer workflow operations:
   5. Sets the temporary layer to `Luminosity` blend mode (`luminize`) and enables `Inherit Alpha`.
   6. Merges the layer down into the sketch layer.
   7. Creates a new paint layer directly above using `+1` incremental naming protocol.
-  8. Activates the new layer, switches brush preset to `'0 STD DRW'`, and resets foreground color to black (`#000000`).
-- **Init Canvas (South / `S`):** Sets up standard canvas layout.
+- **Sanitize Group (North East / `NE`):** Purges non-protected empty layers, adds fresh top drawing layer, preserves `B&W` at absolute top (`[-1]`), and renumbers non-protected layers 1..N.
+- **Init Canvas (South / `S`):** Sets up standard canvas layout (`WHITE` base layer at 75% opacity and `LINES` group with paint layer `1`).
+- **Merge to Black (South West / `SW`):** Merges non-protected paint layers inside target group into a solid black silhouette layer, preserving target group hierarchy, `WHITE` at bottom (`[0]`), silhouette layer `"1"` in middle, and `B&W` at top (`[-1]`). Activates `'0 STD DRW'` brush preset and black foreground color.
 - **B&W Preview (South East / `SE`):** Toggles or creates a top-level color override layer for value checking.
-- **Fit Layer to Canvas (West / `W`):** Scales/fits active layer bounds to canvas size.
+- **Fit Layer to Canvas (West / `W`):** Scales/fits active layer bounds to canvas size (respecting Keep Aspect Ratio condition).
 
 ---
 

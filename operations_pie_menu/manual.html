@@ -6,13 +6,17 @@
 </head>
 <body>
 <h1>Operations Pie Menu</h1>
-<p>Blender-style 4-sector Radial Pie Menu for Krita canvas workflow.</p>
-<h2>Features</h2>
+<p>Blender-style 8-sector Radial Pie Menu for Krita canvas and layer workflow automation.</p>
+<h2>Sectors</h2>
 <ul>
-  <li><b>North (N)</b>: Stub North</li>
-  <li><b>East (E)</b>: Stub East</li>
-  <li><b>West (W)</b>: Stub West</li>
-  <li><b>South (S)</b>: Init Canvas - Checks layers, prompts "Nuke Document?" if >1 layer, fills base with solid white, renames to "WHITE" (75% opacity), creates group "LINES" with paint layer "1", and activates the Freehand Brush tool.</li>
+  <li><b>North (N) - Refine Sketch</b>: Applies random HSL coloration to sketch lines, merges via luminosity, creates incremented layer <code>+1</code>, and activates <code>'0 STD DRW'</code> brush.</li>
+  <li><b>North East (NE) - Sanitize Group</b>: Purges empty non-protected layers, adds fresh top drawing layer, keeps <code>B&W</code> layer at absolute top, and renumbers layers 1..N.</li>
+  <li><b>East (E) - Stub East</b>: Reserved placeholder slot.</li>
+  <li><b>South East (SE) - B&W Preview</b>: Toggles or creates top-level value checking layer.</li>
+  <li><b>South (S) - Init Canvas</b>: Resets canvas to <code>WHITE</code> base layer (75% opacity) and <code>LINES</code> group with layer <code>1</code>, activating <code>'0 STD DRW'</code> brush.</li>
+  <li><b>South West (SW) - Merge to Black</b>: Merges non-protected paint layers inside target group into a solid black silhouette layer, strictly preserving <code>WHITE</code> at bottom <code>[0]</code>, silhouette layer in middle, and <code>B&W</code> at top <code>[-1]</code>. Activates <code>'0 STD DRW'</code> brush.</li>
+  <li><b>West (W) - Fit Layer to Canvas</b>: Scales active layer to canvas dimensions (respecting Keep Aspect Ratio condition).</li>
+  <li><b>North West (NW) - Stub North West</b>: Reserved placeholder slot.</li>
 </ul>
 </body>
 </html>
