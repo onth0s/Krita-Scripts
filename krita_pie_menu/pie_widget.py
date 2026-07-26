@@ -298,11 +298,23 @@ class PieMenuWidget(QWidget):
             event.ignore()
             return
 
+        trigger_keys = (
+            Qt.Key_Space,
+            Qt.Key_Tab,
+            Qt.Key_Control,
+            Qt.Key_Alt,
+            Qt.Key_Return,
+            Qt.Key_Enter,
+        )
+
         if getattr(self, "is_interrupted", False):
-            self.cleanup_and_close()
+            # Only close on release of trigger activation keys (e.g. Space/Tab/Ctrl/Alt).
+            # Ignore release of interrupt keys (e.g. F11/Escape) to keep listening until onSpaceRelease!
+            if event.key() in trigger_keys:
+                self.cleanup_and_close()
             return
 
-        if event.key() in (Qt.Key_Space, Qt.Key_Tab, Qt.Key_Control, Qt.Key_Alt, Qt.Key_Return, Qt.Key_Enter):
+        if event.key() in trigger_keys:
             self.trigger_selected_action()
         else:
             super().keyReleaseEvent(event)

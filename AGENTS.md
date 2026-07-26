@@ -298,3 +298,11 @@ def interrupt_and_wait_for_release(self):
 1. Always restore opacity (`self.setWindowOpacity(1.0)`) in `show_at_cursor()`.
 2. ONLY call `self.cleanup_and_close()` (which invokes `releaseKeyboard()` and `close()`) inside `keyReleaseEvent()` when key release is captured.
 
+### 9.3 Key Release Filtering During Interrupts (`trigger_keys` Only)
+
+When an interrupt key (such as <kbd>F11</kbd> or <kbd>Esc</kbd>) is tapped while holding the activation key (<kbd>Space</kbd>):
+- Releasing <kbd>F11</kbd> fires a `keyReleaseEvent` for `Key_F11`.
+- **CRITICAL BUG IF NOT FILTERED**: If `keyReleaseEvent` calls `cleanup_and_close()` on *any* key release while `is_interrupted` is True, releasing <kbd>F11</kbd> will close the widget and destroy `grabKeyboard()` prematurely while <kbd>Space</kbd> is still held down! (Right-Click interrupt worked because mouse releases do not trigger `keyReleaseEvent`).
+- **MANDATORY PATTERN**: In `keyReleaseEvent()`, when `is_interrupted` is True, ONLY call `cleanup_and_close()` if `event.key()` is in `trigger_keys` (`Space`, `Tab`, `Ctrl`, `Alt`, `Enter`). Ignore interrupt key releases (<kbd>F11</kbd>, <kbd>Esc</kbd>) so background listening continues cleanly until `onSpaceRelease`.
+
+
