@@ -193,6 +193,7 @@ class PieMenuWidget(QWidget):
         self.active_direction = None
         self.is_interrupted = False
         self.update_button_highlights()
+        self.setWindowOpacity(1.0)
         self.show()
         self.activateWindow()
         self.grabKeyboard()
@@ -285,11 +286,12 @@ class PieMenuWidget(QWidget):
             btn.style().polish(btn)
 
     def interrupt_and_wait_for_release(self):
-        """Visually hide the menu on interrupt, but keep listening until key release."""
+        """Visually hide the menu on interrupt, but keep listening in the background until key release."""
         if not getattr(self, "is_interrupted", False):
             self.is_interrupted = True
             self.active_direction = None
-            self.hide()
+            self.setWindowOpacity(0.0)
+            self.move(-10000, -10000)
 
     def keyReleaseEvent(self, event):
         if event.isAutoRepeat():
