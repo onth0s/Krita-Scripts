@@ -20,8 +20,8 @@
     "action_id": "op_setup_canvas"
   },
   "SW": {
-    "label": "Stub South West",
-    "action_id": "op_stub_sw"
+    "label": "Merge to Black",
+    "action_id": "op_merge_to_black"
   },
   "W": {
     "label": "Fit Layer to Canvas",
