@@ -54,14 +54,12 @@ def execute_fit_layer():
         target_gh = max(1, int(gh * scale))
         target_gx = (doc_w - target_gw) // 2
         target_gy = (doc_h - target_gh) // 2
-        aspect_mode = Qt.KeepAspectRatio
     else:
         scale = 1.0
         target_gw = doc_w
         target_gh = doc_h
         target_gx = 0
         target_gy = 0
-        aspect_mode = Qt.IgnoreAspectRatio
 
     try:
         if active_layer.type() == "grouplayer":
@@ -93,17 +91,20 @@ def execute_fit_layer():
                 raw_bytes = bytearray(child.pixelData(cx, cy, cw, ch))
                 img = QImage(raw_bytes, cw, ch, cw * 4, QImage.Format_ARGB32).copy()
 
-                scaled_img = img.scaled(new_cw, new_ch, aspect_mode, Qt.SmoothTransformation)
+                scaled_img = img.scaled(new_cw, new_ch, Qt.IgnoreAspectRatio, Qt.SmoothTransformation)
                 if scaled_img.format() != QImage.Format_ARGB32:
                     scaled_img = scaled_img.convertToFormat(QImage.Format_ARGB32)
 
+                actual_w = scaled_img.width()
+                actual_h = scaled_img.height()
+
                 ptr = scaled_img.constBits()
-                ptr.setsize(new_cw * new_ch * 4)
+                ptr.setsize(actual_w * actual_h * 4)
                 new_bytes = QByteArray(bytes(ptr))
 
                 clear_bytes = b"\x00" * (cw * ch * 4)
                 child.setPixelData(QByteArray(clear_bytes), cx, cy, cw, ch)
-                child.setPixelData(new_bytes, new_cx, new_cy, new_cw, new_ch)
+                child.setPixelData(new_bytes, new_cx, new_cy, actual_w, actual_h)
 
             parent.addChildNode(scaled_group, active_layer)
             active_layer.remove()
@@ -116,18 +117,21 @@ def execute_fit_layer():
             raw_bytes = bytearray(active_layer.pixelData(gx, gy, gw, gh))
             img = QImage(raw_bytes, gw, gh, gw * 4, QImage.Format_ARGB32).copy()
 
-            scaled_img = img.scaled(target_gw, target_gh, aspect_mode, Qt.SmoothTransformation)
+            scaled_img = img.scaled(target_gw, target_gh, Qt.IgnoreAspectRatio, Qt.SmoothTransformation)
             if scaled_img.format() != QImage.Format_ARGB32:
                 scaled_img = scaled_img.convertToFormat(QImage.Format_ARGB32)
 
+            actual_w = scaled_img.width()
+            actual_h = scaled_img.height()
+
             ptr = scaled_img.constBits()
-            ptr.setsize(target_gw * target_gh * 4)
+            ptr.setsize(actual_w * actual_h * 4)
             new_bytes = QByteArray(bytes(ptr))
 
             parent = active_layer.parentNode() or doc.rootNode()
 
             scaled_layer = doc.createNode(active_layer.name(), "paintlayer")
-            scaled_layer.setPixelData(new_bytes, target_gx, target_gy, target_gw, target_gh)
+            scaled_layer.setPixelData(new_bytes, target_gx, target_gy, actual_w, actual_h)
 
             try:
                 scaled_layer.setAlphaLocked(active_layer.alphaLocked())
