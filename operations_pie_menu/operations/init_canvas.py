@@ -1,11 +1,23 @@
+from typing import Any, List
+
 from krita import Krita
 from PyQt5.QtCore import QByteArray
 from PyQt5.QtWidgets import QMessageBox
 
-from krita_pie_menu import find_brush_preset, log_error, log_info, log_warning, resolve_action, set_foreground_black
+from krita_pie_menu import (
+    find_brush_preset,
+    log_error,
+    log_info,
+    log_warning,
+    make_doc_active_validator,
+    resolve_action,
+    set_foreground_black,
+)
+
+validate_init_canvas = make_doc_active_validator()
 
 
-def execute_init_canvas():
+def execute_init_canvas() -> None:
     """
     Init Canvas (South Operation):
     - Prompts 'Nuke Document?' if >1 layer present.
@@ -19,7 +31,7 @@ def execute_init_canvas():
         QMessageBox.warning(None, "Operations Pie Menu", "No active document open.")
         return
 
-    def count_all_nodes(node):
+    def count_all_nodes(node: Any) -> List[Any]:
         nodes = []
         for child in node.childNodes():
             nodes.append(child)

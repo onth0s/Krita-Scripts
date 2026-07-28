@@ -1,3 +1,5 @@
+from typing import Any, Tuple
+
 from krita import Krita
 from PyQt5.QtCore import QByteArray
 from PyQt5.QtGui import QImage
@@ -5,6 +7,7 @@ from PyQt5.QtWidgets import QMessageBox
 
 from krita_pie_menu import (
     find_brush_preset,
+    is_protected_layer,
     log_error,
     log_info,
     log_warning,
@@ -13,14 +16,12 @@ from krita_pie_menu import (
     set_foreground_black,
 )
 
-_PROTECTED_NAMES = {"WHITE", "B&W", "LINES"}
+
+def _is_preserved(node: Any) -> bool:
+    return is_protected_layer(node) or node.locked()
 
 
-def _is_protected(node) -> bool:
-    return node.name().strip().upper() in _PROTECTED_NAMES
-
-
-def _flatten_extra_checks(doc, node):
+def _flatten_extra_checks(doc: Any, node: Any) -> Tuple[bool, str]:
     if node.type() == "grouplayer":
         return True, ""
     parent = node.parentNode()
@@ -32,11 +33,11 @@ def _flatten_extra_checks(doc, node):
 validate_merge_to_black = make_doc_active_validator(_flatten_extra_checks)
 
 
-def execute_merge_to_black():
+def execute_merge_to_black() -> None:
     """
     Merge to Black (SW Operation):
     - Identifies target group layer (active group or parent group of active layer).
-    - Merges non-protected paint layers inside the target group into a single black silhouette layer.
+    - Merges non-protected, unlocked paint layers inside the target group into a single black silhouette layer.
     - Preserves target group identity, structure, and document hierarchy.
     - Strictly restores internal layer stack: WHITE at bottom [0], silhouette layer '1' in middle, B&W at top [-1].
     - Activates layer '1' and sets '0 STD DRW' brush as active with black foreground color.
@@ -63,25 +64,29 @@ def execute_merge_to_black():
             return
 
     try:
-        # 1. Identify protected and non-protected layers in group_layer
-        protected_nodes = []
+        # 1. Identify preserved (protected/locked) and mergeable paint layers in group_layer
+        preserved_nodes = []
         paint_nodes = []
         white_node = None
         bw_node = None
 
         for child in group_layer.childNodes():
             name_upper = child.name().strip().upper()
-            if _is_protected(child):
-                protected_nodes.append(child)
+            if is_protected_layer(child):
                 if name_upper == "WHITE":
                     white_node = child
                 elif name_upper == "B&W":
                     bw_node = child
+
+            if _is_preserved(child):
+                preserved_nodes.append(child)
             elif child.type() == "paintlayer":
                 paint_nodes.append(child)
 
         if not paint_nodes:
-            QMessageBox.information(None, "Operations Pie Menu", "Group Layer contains no paint layers to merge.")
+            QMessageBox.information(
+                None, "Operations Pie Menu", "Group Layer contains no unlocked paint layers to merge."
+            )
             return
 
         # 2. Compute union bounding box across non-protected paint layers
@@ -102,16 +107,22 @@ def execute_merge_to_black():
         gx, gy = int(min_x), int(min_y)
         gw, gh = int(max_x - min_x), int(max_y - min_y)
 
-        # 3. Temporarily hide protected layers during composite projection extraction
-        for p_node in protected_nodes:
+        # Record original visibility of preserved nodes
+        orig_visibility = [(p_node, p_node.visible()) for p_node in preserved_nodes]
+
+        # 3. Temporarily hide preserved layers during composite projection extraction
+        for p_node in preserved_nodes:
             p_node.setVisible(False)
 
         doc.refreshProjection()
         proj_bytes = bytearray(group_layer.projectionPixelData(gx, gy, gw, gh))
 
-        # Restore protected layers visibility
-        for p_node in protected_nodes:
-            p_node.setVisible(True)
+        # Restore preserved layers visibility (locked layers retain their original visibility state)
+        for p_node, was_visible in orig_visibility:
+            if is_protected_layer(p_node):
+                p_node.setVisible(True)
+            else:
+                p_node.setVisible(was_visible)
 
         # 4. Fill composite RGB channels with solid black (#000000) preserving Alpha
         img = QImage(proj_bytes, gw, gh, gw * 4, QImage.Format_ARGB32)
@@ -130,13 +141,23 @@ def execute_merge_to_black():
 
         black_silhouette_bytes = QByteArray(bytes(raw_arr))
 
-        # 5. Purge non-protected paint layers from group_layer
+        # 5. Purge unpreserved paint layers from group_layer
         for child in list(group_layer.childNodes()):
-            if not _is_protected(child):
+            if not _is_preserved(child):
                 child.remove()
 
-        # 6. Create new paint layer "1" and set pixel data (simulating alpha lock fill)
-        layer_1 = doc.createNode("1", "paintlayer")
+        # Determine non-colliding name for the new silhouette layer to avoid Krita auto-renaming locked layers
+        existing_names = {child.name() for child in group_layer.childNodes()}
+        target_layer_name = "1"
+        if target_layer_name in existing_names:
+            target_layer_name = "1_black"
+            suffix_counter = 1
+            while target_layer_name in existing_names:
+                target_layer_name = f"1_black_{suffix_counter}"
+                suffix_counter += 1
+
+        # 6. Create new paint layer and set pixel data (simulating alpha lock fill)
+        layer_1 = doc.createNode(target_layer_name, "paintlayer")
         layer_1.setAlphaLocked(True)
         layer_1.setPixelData(black_silhouette_bytes, gx, gy, gw, gh)
         layer_1.setAlphaLocked(False)
@@ -156,7 +177,6 @@ def execute_merge_to_black():
 
         # Step B: Add B&W at top if present
         if bw_node:
-            bw_node.setLocked(True)
             group_layer.addChildNode(bw_node, layer_1)
 
         # 8. Set active node to layer "1"

@@ -1,11 +1,15 @@
+from typing import Any, Optional
+
 from krita import Krita
 from PyQt5.QtCore import QByteArray
 from PyQt5.QtWidgets import QMessageBox
 
-from krita_pie_menu import log_error, log_info, log_warning
+from krita_pie_menu import log_error, log_info, log_warning, make_doc_active_validator
+
+validate_bw_preview = make_doc_active_validator()
 
 
-def execute_bw_preview():
+def execute_bw_preview() -> None:
     """
     B&W Preview (SE Operation):
     - Toggles visibility of top-level 'B&W' layer if present.
@@ -19,7 +23,7 @@ def execute_bw_preview():
 
     initial_layer = doc.activeNode()
 
-    def find_bw_node(node):
+    def find_bw_node(node: Any) -> Optional[Any]:
         for child in node.childNodes():
             if child.name() == "B&W":
                 return child

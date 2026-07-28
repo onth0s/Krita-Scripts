@@ -1,23 +1,19 @@
+from typing import Any, Tuple
+
 from krita import Krita
 from PyQt5.QtWidgets import QMessageBox
 
-from krita_pie_menu import log_error, log_info
-
-_PROTECTED_NAMES = {"WHITE", "B&W", "LINES"}
+from krita_pie_menu import is_protected_layer, log_error, log_info
 
 
-def _is_protected(node) -> bool:
-    return node.name().strip().upper() in _PROTECTED_NAMES
-
-
-def _is_empty_paint_layer(node) -> bool:
+def _is_empty_paint_layer(node: Any) -> bool:
     if node.type() != "paintlayer":
         return False
     b = node.bounds()
     return b.width() <= 0 or b.height() <= 0
 
 
-def validate_sanitize_group():
+def validate_sanitize_group() -> Tuple[bool, str]:
     app = Krita.instance()
     doc = app.activeDocument()
     if not doc:
@@ -33,7 +29,7 @@ def validate_sanitize_group():
     return False, "Sanitize Group requires a Group Layer (or a layer inside one)."
 
 
-def execute_sanitize_group():
+def execute_sanitize_group() -> None:
     """
     Sanitize Group (NE Operation):
     - Purges intermediate empty paint layers that are NOT protected.
@@ -66,7 +62,7 @@ def execute_sanitize_group():
     try:
         # ── 1. Purge empty non-protected paint layers ────────────────────────
         for child in list(group_layer.childNodes()):
-            if not _is_protected(child) and _is_empty_paint_layer(child):
+            if not is_protected_layer(child) and _is_empty_paint_layer(child):
                 child.remove()
 
         # ── 2. Find B&W layer if present ──────────────────────────────────────
@@ -89,7 +85,7 @@ def execute_sanitize_group():
         # ── 5. Renumber non-protected layers bottom-to-top (1, 2, 3 … N) ─────
         counter = 1
         for child in group_layer.childNodes():  # bottom → top
-            if _is_protected(child):
+            if is_protected_layer(child):
                 continue  # leave protected layers alone
             child.setName(str(counter))
             counter += 1

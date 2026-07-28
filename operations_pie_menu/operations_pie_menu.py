@@ -3,7 +3,7 @@ import os
 from krita import Krita
 from PyQt5.QtWidgets import QMessageBox
 
-from krita_pie_menu import BasePieMenuExtension, load_config
+from krita_pie_menu import BasePieMenuExtension, read_condition_flag
 
 from .config_dialog import OperationsConfigDialog
 from .operations import (
@@ -13,7 +13,9 @@ from .operations import (
     execute_merge_to_black,
     execute_refine_sketch,
     execute_sanitize_group,
+    validate_bw_preview,
     validate_fit_layer,
+    validate_init_canvas,
     validate_merge_to_black,
     validate_refine_sketch,
     validate_sanitize_group,
@@ -51,18 +53,8 @@ class OperationsPieMenuExtension(BasePieMenuExtension):
         )
         cfg_action.triggered.connect(self.open_config_dialog)
 
-    def _read_conditions_config(self, key: str, default: bool = False) -> bool:
-        """
-        Dynamically query condition state from conditions_pie_menu config if available.
-        Cross-plugin dependency: operations_pie_menu reads workflow flags set by conditions_pie_menu.
-        """
-        pykrita_dir = os.path.dirname(os.path.dirname(__file__))
-        cond_cfg_path = os.path.join(pykrita_dir, "conditions_pie_menu", "config.json")
-        cond_cfg = load_config(cond_cfg_path, {})
-        return bool(cond_cfg.get(key, default))
-
     def _get_duplicate_reflay_condition(self) -> bool:
-        return self._read_conditions_config("duplicate_reflay", False)
+        return read_condition_flag("duplicate_reflay", False)
 
     def build_pie_config(self):
         config = self.load_config()
@@ -72,6 +64,8 @@ class OperationsPieMenuExtension(BasePieMenuExtension):
 
         validators["N"] = validate_refine_sketch
         validators["NE"] = validate_sanitize_group
+        validators["SE"] = validate_bw_preview
+        validators["S"] = validate_init_canvas
         validators["SW"] = validate_merge_to_black
         validators["W"] = validate_fit_layer
 

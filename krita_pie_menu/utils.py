@@ -1,9 +1,32 @@
 import json
 import os
 import re
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Set
 
 from krita import Krita, ManagedColor
+
+PROTECTED_NAMES: Set[str] = {"WHITE", "B&W", "LINES"}
+
+
+def is_protected_layer(node: Any) -> bool:
+    """
+    Checks whether a Krita layer node is protected from purging or renaming.
+    """
+    if not node or not hasattr(node, "name"):
+        return False
+    return node.name().strip().upper() in PROTECTED_NAMES
+
+
+def read_condition_flag(key: str, default: bool = False) -> bool:
+    """
+    Safely queries a global condition flag from conditions_pie_menu/config.json.
+    Provides robust cross-plugin condition reading with fallback default.
+    """
+    pykrita_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    cond_cfg_path = os.path.join(pykrita_dir, "conditions_pie_menu", "config.json")
+    cond_cfg = load_config(cond_cfg_path, {})
+    return bool(cond_cfg.get(key, default))
+
 
 
 def load_config(config_path: str, defaults: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:

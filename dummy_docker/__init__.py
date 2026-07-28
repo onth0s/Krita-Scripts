@@ -1,3 +1,7 @@
+"""
+Dummy Docker plugin registration module for Krita.
+"""
+
 from krita import DockWidgetFactory, DockWidgetFactoryBase, Krita
 
 from .dummy_docker import DummyDocker

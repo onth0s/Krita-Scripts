@@ -1,9 +1,11 @@
+from typing import Any
+
 from krita import DockWidget, Krita
 from PyQt5.QtWidgets import QLabel, QPushButton, QVBoxLayout, QWidget
 
 
 class DummyDocker(DockWidget):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.setWindowTitle("Dummy Docker Panel")
 
@@ -20,7 +22,7 @@ class DummyDocker(DockWidget):
 
         self.setWidget(main_widget)
 
-    def canvasChanged(self, canvas):
+    def canvasChanged(self, canvas: Any) -> None:
         if canvas is None:
             self.info_label.setText("Canvas: None")
         else:
@@ -30,7 +32,7 @@ class DummyDocker(DockWidget):
             else:
                 self.info_label.setText("Canvas Ready")
 
-    def on_btn_click(self):
+    def on_btn_click(self) -> None:
         doc = Krita.instance().activeDocument()
         if doc is None:
             self.info_label.setText("Status: No Active Document")

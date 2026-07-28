@@ -1,3 +1,5 @@
+from typing import Any
+
 from krita import Extension, Krita
 
 from krita_pie_menu import ToastNotification, create_incremental_layer
@@ -8,17 +10,17 @@ class QuickScriptEngineExtension(Extension):
     General purpose arbitrary script engine for Krita workflow automation.
     """
 
-    def __init__(self, parent):
+    def __init__(self, parent: Any) -> None:
         super().__init__(parent)
 
-    def setup(self):
+    def setup(self) -> None:
         pass
 
-    def createActions(self, window):
+    def createActions(self, window: Any) -> None:
         action = window.createAction("create_incremental_layer_action", "Create Incremental Layer", "tools/scripts")
         action.triggered.connect(self.create_incremental_layer)
 
-    def create_incremental_layer(self):
+    def create_incremental_layer(self) -> None:
         """
         Creates a new paint layer directly above the active node.
         Parses active node name for an integer:

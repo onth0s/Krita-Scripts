@@ -134,7 +134,7 @@ All radial Pie Menu extensions (`filters_pie_menu`, `operations_pie_menu`, `cond
 
 - **`BasePieMenuExtension` (`krita_pie_menu/base_extension.py`)**: Abstract base class managing configuration persistence, guarded menu display (`show_pie_menu`), and Qt widget destruction lifecycle.
 - **`BasePieConfigDialog` (`krita_pie_menu/base_config_dialog.py`)**: Unified PyQt configuration dialog base class for sector key-bindings and options; exports `SECTOR_NAMES`.
-- **`utils` (`krita_pie_menu/utils.py`)**: Helper utilities (`load_config`, `save_config`, `get_incremental_layer_name`, `create_incremental_layer`, `resolve_action`, `find_brush_preset`, `set_foreground_black`, `make_doc_active_validator`).
+- **`utils` (`krita_pie_menu/utils.py`)**: Centralized helper utilities (`PROTECTED_NAMES`, `is_protected_layer`, `read_condition_flag`, `load_config`, `save_config`, `get_incremental_layer_name`, `create_incremental_layer`, `resolve_action`, `find_brush_preset`, `set_foreground_black`, `make_doc_active_validator`).
 - **`logger` (`krita_pie_menu/logger.py`)**: Thread-safe rotating logger writing to `%APPDATA%/krita/pykrita/krita_scripts.log`.
 
 ### Modular Operations Pattern (`operations_pie_menu/operations/`)
@@ -144,6 +144,7 @@ Complex operations are decomposed into dedicated single-responsibility modules:
 - `bw_preview.py` (South-East)
 - `init_canvas.py` (South)
 - `fit_layer.py` (West)
+- `merge_to_black.py` (South-West)
 
 ---
 

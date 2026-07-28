@@ -5,7 +5,7 @@
         <Action name="trigger_operations_pie_menu">
             <icon></icon>
             <text>Operations Pie Menu</text>
-            <whatsThis>Opens 4-sector Blender-style radial Operations Pie Menu for Krita canvas workflow.</whatsThis>
+            <whatsThis>Opens 8-sector Blender-style radial Operations Pie Menu for Krita canvas workflow.</whatsThis>
             <toolTip>Open Operations Pie Menu</toolTip>
             <iconText>OpsPie</iconText>
             <activationFlags>00000</activationFlags>

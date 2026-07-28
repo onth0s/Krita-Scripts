@@ -1,4 +1,5 @@
 import os
+from typing import Any, Callable, Dict, Tuple
 
 from krita import Krita
 from PyQt5.QtWidgets import QMessageBox
@@ -8,7 +9,7 @@ from krita_pie_menu import BasePieMenuExtension, make_doc_active_validator
 from .config_dialog import SectorConfigDialog
 
 
-def _filter_extra_checks(doc, node):
+def _filter_extra_checks(doc: Any, node: Any) -> Tuple[bool, str]:
     if node.type() == "grouplayer":
         return False, "Filters cannot be applied directly to a Group Layer."
     return True, ""
@@ -29,7 +30,7 @@ DEFAULT_FILTERS_CONFIG = {
 
 
 class FiltersPieMenuExtension(BasePieMenuExtension):
-    def __init__(self, parent):
+    def __init__(self, parent: Any) -> None:
         config_path = os.path.join(os.path.dirname(__file__), "config.json")
         super().__init__(
             parent,
@@ -39,14 +40,14 @@ class FiltersPieMenuExtension(BasePieMenuExtension):
             object_name="FiltersPieWidget",
         )
 
-    def createActions(self, window):
+    def createActions(self, window: Any) -> None:
         action = window.createAction("trigger_filters_pie_menu", "Filters Pie Menu", "tools/scripts")
         action.triggered.connect(self.show_pie_menu)
 
         cfg_action = window.createAction("configure_filters_pie_menu", "Configure Filters Pie Menu", "tools/scripts")
         cfg_action.triggered.connect(self.open_config_dialog)
 
-    def build_pie_config(self):
+    def build_pie_config(self) -> Tuple[Dict[str, Any], Dict[str, Any], Dict[str, Any], Dict[str, Any]]:
         config = self.load_config()
         callbacks = {}
         items_meta = {}
@@ -63,14 +64,14 @@ class FiltersPieMenuExtension(BasePieMenuExtension):
 
         return callbacks, items_meta, validators, {}
 
-    def make_trigger_callback(self, action_id, fallback_text):
+    def make_trigger_callback(self, action_id: str, fallback_text: str) -> Callable[[], bool]:
         return lambda: self.trigger_action(action_id, fallback_text)
 
-    def open_config_dialog(self):
+    def open_config_dialog(self) -> None:
         dlg = SectorConfigDialog(self.config_path, on_save_callback=None)
         dlg.exec_()
 
-    def trigger_action(self, action_id, fallback_text):
+    def trigger_action(self, action_id: str, fallback_text: str) -> bool:
         app = Krita.instance()
         doc = app.activeDocument()
         if doc and doc.activeNode() and doc.activeNode().type() == "grouplayer":

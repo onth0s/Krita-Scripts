@@ -1,24 +1,25 @@
-import os
-
 from krita import Krita
 from PyQt5.QtCore import QByteArray, Qt
 from PyQt5.QtGui import QImage
 from PyQt5.QtWidgets import QMessageBox
 
-from krita_pie_menu import load_config, log_error, log_info, log_warning, make_doc_active_validator
+from krita_pie_menu import (
+    log_error,
+    log_info,
+    log_warning,
+    make_doc_active_validator,
+    read_condition_flag,
+)
 
 
 def _is_keep_aspect_ratio_enabled() -> bool:
-    pykrita_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-    cond_cfg_path = os.path.join(pykrita_dir, "conditions_pie_menu", "config.json")
-    cond_cfg = load_config(cond_cfg_path, {})
-    return bool(cond_cfg.get("keep_aspect_ratio", False))
+    return read_condition_flag("keep_aspect_ratio", False)
 
 
 validate_fit_layer = make_doc_active_validator()
 
 
-def execute_fit_layer():
+def execute_fit_layer() -> None:
     """
     Fit Layer to Canvas (West Operation):
     Scales and centers active layer or group layer content to canvas dimensions while preserving aspect ratio.

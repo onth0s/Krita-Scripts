@@ -1,5 +1,6 @@
 import colorsys
 import random
+from typing import Any, Tuple
 
 from krita import Krita
 from PyQt5.QtCore import QByteArray
@@ -17,14 +18,14 @@ from krita_pie_menu import (
 )
 
 
-def is_layer_empty(node):
+def is_layer_empty(node: Any) -> bool:
     if not node or node.type() != "paintlayer":
         return False
     b = node.bounds()
     return b.width() <= 0 or b.height() <= 0
 
 
-def _refine_sketch_extra_checks(doc, node):
+def _refine_sketch_extra_checks(doc: Any, node: Any) -> Tuple[bool, str]:
     if node.type() == "grouplayer":
         return False, "Refine Sketch requires a Paint Layer (Group selected)."
     if is_layer_empty(node):
@@ -35,7 +36,7 @@ def _refine_sketch_extra_checks(doc, node):
 validate_refine_sketch = make_doc_active_validator(_refine_sketch_extra_checks)
 
 
-def handle_selection_cut_paste(doc, app, active_layer):
+def handle_selection_cut_paste(doc: Any, app: Any, active_layer: Any) -> Any:
     """
     If active selection exists, cut it, paste onto new layer with incremental name, and deselect.
     """
@@ -70,7 +71,7 @@ def handle_selection_cut_paste(doc, app, active_layer):
     return active_layer
 
 
-def fill_layer_random_hsl(doc, layer):
+def fill_layer_random_hsl(doc: Any, layer: Any) -> None:
     """
     Fills sketch layer line pixels with a perceptually distinct random HSL color.
     Checks color depth and color model before manipulating bytes.
@@ -100,7 +101,7 @@ def fill_layer_random_hsl(doc, layer):
         log_error("refine_sketch", "Failed byte fill of HSL color on layer", e)
 
 
-def apply_duplicate_reflay(doc, app, active_layer):
+def apply_duplicate_reflay(doc: Any, app: Any, active_layer: Any) -> Any:
     """
     Duplicates active layer and merges down if duplicate_reflay condition is True.
     """
@@ -125,7 +126,7 @@ def apply_duplicate_reflay(doc, app, active_layer):
         return active_layer
 
 
-def apply_luminosity_overlay(doc, app, active_layer, view):
+def apply_luminosity_overlay(doc: Any, app: Any, active_layer: Any, view: Any) -> None:
     """
     Creates temporary neutral gray layer, sets Luminosity blend mode & Inherit Alpha, and merges down.
     """
@@ -171,7 +172,7 @@ def apply_luminosity_overlay(doc, app, active_layer, view):
         doc.waitForDone()
 
 
-def execute_refine_sketch(duplicate_reflay: bool = False):
+def execute_refine_sketch(duplicate_reflay: bool = False) -> None:
     """
     Refine Sketch (North Operation):
     1. Validates active layer is not empty.
