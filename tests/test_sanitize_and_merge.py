@@ -1,158 +1,8 @@
 import pytest
+from fakes import App, Bounds, Doc, Group, Node
 
 from operations_pie_menu.operations import merge_to_black as m2b
 from operations_pie_menu.operations import sanitize_group as sg
-
-# ── Fake layer tree primitives ───────────────────────────────────────────────
-
-
-class _Bounds:
-    def __init__(self, x, y, w, h):
-        self._v = (x, y, w, h)
-
-    def x(self):
-        return self._v[0]
-
-    def y(self):
-        return self._v[1]
-
-    def width(self):
-        return self._v[2]
-
-    def height(self):
-        return self._v[3]
-
-
-class _Node:
-    def __init__(self, name, ntype="paintlayer", empty=True, locked=False):
-        self._name = name
-        self._type = ntype
-        self._empty = empty
-        self._locked = locked
-        self._visible = True
-        self._bounds = _Bounds(0, 0, 2, 2)
-        self._parent = None
-        self.removed = False
-
-    def name(self):
-        return self._name
-
-    def setName(self, n):
-        self._name = n
-
-    def type(self):
-        return self._type
-
-    def locked(self):
-        return self._locked
-
-    def setLocked(self, v):
-        self._locked = v
-
-    def visible(self):
-        return self._visible
-
-    def setVisible(self, v):
-        self._visible = v
-
-    def bounds(self):
-        return self._bounds
-
-    def parentNode(self):
-        return self._parent
-
-    def remove(self):
-        self.removed = True
-        if self._parent is not None:
-            self._parent._children.remove(self)
-
-    def setAlphaLocked(self, v):
-        pass
-
-    def setPixelData(self, *a):
-        pass
-
-    def duplicate(self):
-        return None
-
-
-class _Group:
-    def __init__(self, name, children):
-        self._name = name
-        self._children = list(children)
-        for child in self._children:
-            child._parent = self
-
-    def name(self):
-        return self._name
-
-    def type(self):
-        return "grouplayer"
-
-    def childNodes(self):
-        return list(self._children)
-
-    def addChildNode(self, node, reference):
-        node._parent = self
-        if reference is None:
-            self._children.append(node)
-        else:
-            idx = self._children.index(reference)
-            self._children.insert(idx + 1, node)
-
-    def remove(self):
-        pass
-
-
-class _Doc:
-    def __init__(self, node, root=None):
-        self._node = node
-        self._root = root
-        self.created = []
-        self.active = []
-        self.refreshed = 0
-        self._u8rgba = True
-
-    def activeNode(self):
-        return self._node
-
-    def rootNode(self):
-        return self._root
-
-    def createNode(self, name, ntype):
-        n = _Node(name, ntype)
-        self.created.append(n)
-        return n
-
-    def setActiveNode(self, node):
-        self.active.append(node)
-
-    def refreshProjection(self):
-        self.refreshed += 1
-
-    def colorModel(self):
-        return "RGBA"
-
-    def colorDepth(self):
-        return "U8"
-
-    def setPixelData(self, *a):
-        pass
-
-
-class _App:
-    def __init__(self, doc=None):
-        self._doc = doc
-        self.actions = {}
-
-    def activeDocument(self):
-        return self._doc
-
-    def action(self, name):
-        return self.actions.get(name)
-
-    def activeWindow(self):
-        return None
 
 
 @pytest.fixture
@@ -180,39 +30,39 @@ def _no_protected(node):
 
 
 def test_sanitize_no_doc(monkeypatch, warnings):
-    monkeypatch.setattr(sg, "Krita", type("_AppStub", (), {"instance": staticmethod(lambda: _App(None))}))
+    monkeypatch.setattr(sg, "Krita", type("_AppStub", (), {"instance": staticmethod(lambda: App(None))}))
     sg.execute_sanitize_group()
     assert len(warnings) == 1
 
 
 def test_sanitize_no_node(monkeypatch, warnings):
-    app = _App(_Doc(node=None))
+    app = App(Doc(node=None))
     monkeypatch.setattr(sg, "Krita", type("_AppStub", (), {"instance": staticmethod(lambda: app)}))
     sg.execute_sanitize_group()
     assert len(warnings) == 1
 
 
 def test_sanitize_layer_not_in_group(monkeypatch, warnings):
-    node = _Node("loose", "paintlayer")
-    app = _App(_Doc(node=node))
+    node = Node("loose", "paintlayer")
+    app = App(Doc(node=node, root=Group("root", [])))
     monkeypatch.setattr(sg, "Krita", type("_AppStub", (), {"instance": staticmethod(lambda: app)}))
     sg.execute_sanitize_group()
     assert warnings and "Group" in str(warnings[0])
 
 
 def test_sanitize_validate(monkeypatch):
-    app = _App(_Doc(node=None))
+    app = App(Doc(node=None))
     monkeypatch.setattr(sg, "Krita", type("_AppStub", (), {"instance": staticmethod(lambda: app)}))
     assert sg.validate_sanitize_group()[0] is False
 
-    group = _Group("g", [])
-    app2 = _App(_Doc(node=group))
+    group = Group("g", [])
+    app2 = App(Doc(node=group))
     monkeypatch.setattr(sg, "Krita", type("_AppStub", (), {"instance": staticmethod(lambda: app2)}))
     assert sg.validate_sanitize_group() == (True, "")
 
-    inside = _Node("inner", "paintlayer")
-    grp = _Group("g2", [inside])
-    app3 = _App(_Doc(node=inside))
+    inside = Node("inner", "paintlayer")
+    grp = Group("g2", [inside])
+    app3 = App(Doc(node=inside))
     monkeypatch.setattr(sg, "Krita", type("_AppStub", (), {"instance": staticmethod(lambda: app3)}))
     assert sg.validate_sanitize_group() == (True, "")
     del grp
@@ -222,13 +72,13 @@ def test_sanitize_full_flow(monkeypatch, warnings):
     monkeypatch.setattr(sg, "is_protected_layer", _no_protected)
     monkeypatch.setattr(sg, "is_empty_paint_layer", lambda node: node._empty)
 
-    white = _Node("WHITE", "paintlayer")
-    junk = _Node("junk_empty", "paintlayer", empty=True)
-    ink = _Node("ink", "paintlayer", empty=False)
-    bw = _Node("B&W", "paintlayer", empty=False)
-    group = _Group("g", [white, junk, ink, bw])
-    doc = _Doc(node=group)
-    app = _App(doc)
+    white = Node("WHITE", "paintlayer")
+    junk = Node("junk_empty", "paintlayer", empty=True)
+    ink = Node("ink", "paintlayer", empty=False)
+    bw = Node("B&W", "paintlayer", empty=False)
+    group = Group("g", [white, junk, ink, bw])
+    doc = Doc(node=group)
+    app = App(doc)
     monkeypatch.setattr(sg, "Krita", type("_AppStub", (), {"instance": staticmethod(lambda: app)}))
     logged = []
     monkeypatch.setattr(sg, "log_info", lambda *a: logged.append(a))
@@ -249,12 +99,12 @@ def test_sanitize_full_flow(monkeypatch, warnings):
 
 
 def test_sanitize_exception(monkeypatch, warnings):
-    class _BoomGroup(_Group):
+    class _BoomGroup(Group):
         def childNodes(self):
             raise RuntimeError("boom")
 
-    doc = _Doc(node=_BoomGroup("g", []))
-    app = _App(doc)
+    doc = Doc(node=_BoomGroup("g", []))
+    app = App(doc)
     monkeypatch.setattr(sg, "Krita", type("_AppStub", (), {"instance": staticmethod(lambda: app)}))
     logged = []
     monkeypatch.setattr(sg, "log_error", lambda *a: logged.append(a))
@@ -299,20 +149,20 @@ def test_merge_black_full_flow(monkeypatch, warnings, infos):
     monkeypatch.setattr(m2b, "is_u8_rgba", lambda doc: True)
     _fake_qimage(monkeypatch, bytes(range(16)))  # 4 px * 4 bytes
 
-    white = _Node("WHITE", "paintlayer", locked=True)
-    ink1 = _Node("ink1", "paintlayer", empty=False)
-    ink2 = _Node("ink2", "paintlayer", empty=False)
-    bw = _Node("B&W", "paintlayer")
-    group = _Group("g", [white, ink1, ink2, bw])
+    white = Node("WHITE", "paintlayer", locked=True)
+    ink1 = Node("ink1", "paintlayer", empty=False)
+    ink2 = Node("ink2", "paintlayer", empty=False)
+    bw = Node("B&W", "paintlayer")
+    group = Group("g", [white, ink1, ink2, bw])
 
-    class _ProjGroup(_Group):
+    class _ProjGroup(Group):
         def projectionPixelData(self, x, y, w, h):
             return bytes(range(16))
 
     group.projectionPixelData = lambda x, y, w, h: bytes(range(16))
-    doc = _Doc(node=group)
+    doc = Doc(node=group)
     doc._root = group
-    app = _App(doc)
+    app = App(doc)
     monkeypatch.setattr(m2b, "Krita", type("_AppStub", (), {"instance": staticmethod(lambda: app)}))
     logged = []
     monkeypatch.setattr(m2b, "log_info", lambda *a: logged.append(a))
@@ -332,26 +182,26 @@ def test_merge_black_full_flow(monkeypatch, warnings, infos):
 
 
 def test_merge_black_no_doc(monkeypatch, warnings):
-    monkeypatch.setattr(m2b, "Krita", type("_AppStub", (), {"instance": staticmethod(lambda: _App(None))}))
+    monkeypatch.setattr(m2b, "Krita", type("_AppStub", (), {"instance": staticmethod(lambda: App(None))}))
     m2b.execute_merge_to_black()
     assert len(warnings) == 1
 
 
 def test_merge_black_no_node(monkeypatch, warnings):
-    app = _App(_Doc(node=None))
+    app = App(Doc(node=None))
     monkeypatch.setattr(m2b, "Krita", type("_AppStub", (), {"instance": staticmethod(lambda: app)}))
     m2b.execute_merge_to_black()
     assert len(warnings) == 1
 
 
 def test_merge_black_not_u8(monkeypatch, warnings):
-    doc = _Doc(node=_Group("g", []))
+    doc = Doc(node=Group("g", []))
 
-    class _NotU8(_Doc):
+    class _NotU8(Doc):
         def colorDepth(self):
             return "F16"
 
-    app = _App(_NotU8(node=doc._node))
+    app = App(_NotU8(node=doc._node))
     monkeypatch.setattr(m2b, "Krita", type("_AppStub", (), {"instance": staticmethod(lambda: app)}))
     logged = []
     monkeypatch.setattr(m2b, "log_warning", lambda *a: logged.append(a))
@@ -361,8 +211,8 @@ def test_merge_black_not_u8(monkeypatch, warnings):
 
 
 def test_merge_black_layer_outside_group(monkeypatch, warnings):
-    node = _Node("loose", "paintlayer")
-    app = _App(_Doc(node=node))
+    node = Node("loose", "paintlayer")
+    app = App(Doc(node=node, root=Group("root", [])))
     monkeypatch.setattr(m2b, "Krita", type("_AppStub", (), {"instance": staticmethod(lambda: app)}))
     m2b.execute_merge_to_black()
     assert warnings and "Group" in str(warnings[0])
@@ -371,9 +221,9 @@ def test_merge_black_layer_outside_group(monkeypatch, warnings):
 def test_merge_black_no_paint_layers(monkeypatch, infos):
     monkeypatch.setattr(m2b, "is_protected_layer", _no_protected)
     monkeypatch.setattr(m2b, "is_u8_rgba", lambda doc: True)
-    group = _Group("g", [_Node("WHITE", "paintlayer", locked=True)])
-    doc = _Doc(node=group)
-    app = _App(doc)
+    group = Group("g", [Node("WHITE", "paintlayer", locked=True)])
+    doc = Doc(node=group)
+    app = App(doc)
     monkeypatch.setattr(m2b, "Krita", type("_AppStub", (), {"instance": staticmethod(lambda: app)}))
     m2b.execute_merge_to_black()
     assert infos and "no unlocked paint layers" in str(infos[0])
@@ -382,23 +232,23 @@ def test_merge_black_no_paint_layers(monkeypatch, infos):
 def test_merge_black_empty_bounds(monkeypatch, infos):
     monkeypatch.setattr(m2b, "is_protected_layer", _no_protected)
     monkeypatch.setattr(m2b, "is_u8_rgba", lambda doc: True)
-    ink = _Node("ink", "paintlayer", empty=False)
-    ink._bounds = _Bounds(0, 0, 0, 0)
-    group = _Group("g", [ink])
-    doc = _Doc(node=group)
-    app = _App(doc)
+    ink = Node("ink", "paintlayer", empty=False)
+    ink._bounds = Bounds(0, 0, 0, 0)
+    group = Group("g", [ink])
+    doc = Doc(node=group)
+    app = App(doc)
     monkeypatch.setattr(m2b, "Krita", type("_AppStub", (), {"instance": staticmethod(lambda: app)}))
     m2b.execute_merge_to_black()
     assert infos and "empty" in str(infos[0])
 
 
 def test_merge_black_exception(monkeypatch, warnings):
-    class _BoomGroup(_Group):
+    class _BoomGroup(Group):
         def childNodes(self):
             raise RuntimeError("boom")
 
-    doc = _Doc(node=_BoomGroup("g", []))
-    app = _App(doc)
+    doc = Doc(node=_BoomGroup("g", []))
+    app = App(doc)
     monkeypatch.setattr(m2b, "Krita", type("_AppStub", (), {"instance": staticmethod(lambda: app)}))
     logged = []
     monkeypatch.setattr(m2b, "log_error", lambda *a: logged.append(a))
@@ -408,10 +258,10 @@ def test_merge_black_exception(monkeypatch, warnings):
 
 
 def test_merge_black_flatten_extra_checks():
-    group = _Group("g", [])
+    group = Group("g", [])
     assert m2b._flatten_extra_checks(None, group) == (True, "")
-    inside = _Node("inner", "paintlayer")
-    grp = _Group("g2", [inside])
+    inside = Node("inner", "paintlayer")
+    grp = Group("g2", [inside])
     assert m2b._flatten_extra_checks(None, inside) == (True, "")
     del grp
-    assert m2b._flatten_extra_checks(None, _Node("loose", "paintlayer"))[0] is False
+    assert m2b._flatten_extra_checks(None, Node("loose", "paintlayer"))[0] is False
