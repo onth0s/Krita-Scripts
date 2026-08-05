@@ -133,9 +133,18 @@ instance.addDockWidgetFactory(factory)
 All radial Pie Menu extensions (`filters_pie_menu`, `operations_pie_menu`, `conditions_pie_menu`) leverage the shared `krita_pie_menu` widget package:
 
 - **`BasePieMenuExtension` (`krita_pie_menu/base_extension.py`)**: Abstract base class managing configuration persistence, guarded menu display (`show_pie_menu`), and Qt widget destruction lifecycle.
-- **`BasePieConfigDialog` (`krita_pie_menu/base_config_dialog.py`)**: Unified PyQt configuration dialog base class for sector key-bindings and options; exports `SECTOR_NAMES`.
-- **`utils` (`krita_pie_menu/utils.py`)**: Centralized helper utilities (`PROTECTED_NAMES`, `is_protected_layer`, `read_condition_flag`, `load_config`, `save_config`, `get_incremental_layer_name`, `create_incremental_layer`, `resolve_action`, `find_brush_preset`, `set_foreground_black`, `make_doc_active_validator`).
-- **`logger` (`krita_pie_menu/logger.py`)**: Thread-safe rotating logger writing to `%APPDATA%/krita/pykrita/krita_scripts.log`.
+- **`BasePieConfigDialog` (`krita_pie_menu/base_config_dialog.py`)**: Unified PyQt configuration dialog base class for sector key-bindings and options; exports `SECTOR_NAMES` and `SECTOR_CODES` (the canonical 8-sector order `("N","NE","E","SE","S","SW","W","NW")` — `SECTOR_NAMES` derives from `SECTOR_CODES`).
+- **`utils` (`krita_pie_menu/utils.py`)**: Centralized helper utilities (`PROTECTED_NAMES`, `is_protected_layer`, `is_empty_paint_layer`, `is_u8_rgba`, `get_condition_flag`, `CONDITIONS_CONFIG_PATH`, `load_config`, `save_config`, `get_incremental_layer_name`, `create_incremental_layer`, `resolve_action`, `find_brush_preset`, `set_foreground_black`, `make_doc_active_validator`).
+- **`logger` (`krita_pie_menu/logger.py`)**: Rotating logger writing to `%APPDATA%/krita/pykrita/krita_scripts.log`; a module-level `threading.Lock` serializes rotate+write for concurrent callers.
+- **`ToastNotification` (`krita_pie_menu/toast_notification.py`)**: Non-blocking toast feedback; instance `QTimer` fade with a class-level `_active_toast` supersede mechanism.
+
+**Cross-plugin condition flags:** `operations`/`fit_layer` read toggles written by `conditions` via `get_condition_flag(key, default)` (and its alias `read_condition_flag`). This is a deliberate coupling: the path resolves at import time to `<repo root>/conditions_pie_menu/config.json` and is overridable via the `KRITA_CONDITIONS_CONFIG` env var or by reassigning `CONDITIONS_CONFIG_PATH`. If `conditions` is renamed/uninstalled, lookups silently fall back to `default`.
+
+**Pixel-format guard:** `fit_layer` and `merge_to_black` build raw 4-bytes-per-pixel `QImage` buffers. They must call `is_u8_rgba(doc)` first and return early (with a warning toast) on any non-8-bit RGBA document — do not assume the pixel format.
+
+**Protected-layer invariant:** `refine_sketch` renumbers sibling layers `1..N` after creating the new layer but **skips protected layers** (`WHITE`/`B&W`/`LINES`) exactly like `sanitize_group`/`merge_to_black`. Any future renumber/rename/purge loop must call `is_protected_layer()` before mutating.
+
+**Config deep-merge:** `load_config(path, defaults)` deep-merges `defaults` so newly-added keys (e.g. a new sector) survive in user configs; file values always win.
 
 ### Modular Operations Pattern (`operations_pie_menu/operations/`)
 Complex operations are decomposed into dedicated single-responsibility modules:
@@ -145,6 +154,9 @@ Complex operations are decomposed into dedicated single-responsibility modules:
 - `init_canvas.py` (South)
 - `fit_layer.py` (West)
 - `merge_to_black.py` (South-West)
+- `duplicate_layer.py` (North-West)
+
+Dispatch is **registry-based**, not an `if/elif` chain: `operations_pie_menu.py` maps action IDs to handlers in a module-level `OP_HANDLERS` dict (with a named `_make_refine_callback(dup_reflay)` factory for the closure-requiring Refine operation). `build_pie_config` looks up each sector's `action_id` in the registry; unknown IDs fall back to a stub callback. This makes sectors remappable purely via config — keep the registry the single source of truth when adding operations.
 
 ---
 

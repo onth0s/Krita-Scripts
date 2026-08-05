@@ -4,9 +4,9 @@ A collection of Krita Python scripts, extensions, dockable UI panels, and Blende
 
 ---
 
-## 🎨 Included Plugins & Tools
+## Included Plugins & Tools
 
-### 1. 🥧 Filters Pie Menu (`filters_pie_menu`)
+### 1. Filters Pie Menu (`filters_pie_menu`)
 A Blender-style 8-sector radial Pie Menu mapped to the **`Space`** key for instant access to Krita adjustment filters.
 
 #### Features
@@ -33,7 +33,7 @@ A Blender-style 8-sector radial Pie Menu mapped to the **`Space`** key for insta
 
 ---
 
-### 2. 🥧 Operations Pie Menu (`operations_pie_menu`)
+### 2. Operations Pie Menu (`operations_pie_menu`)
 An 8-sector radial Pie Menu providing canvas and layer workflow operations:
 - **Refine Sketch (North / `N`):**
   1. Enables Alpha Lock on the active layer.
@@ -51,7 +51,7 @@ An 8-sector radial Pie Menu providing canvas and layer workflow operations:
 
 ---
 
-### 3. 🥧 Conditions Pie Menu (`conditions_pie_menu`)
+### 3. Conditions Pie Menu (`conditions_pie_menu`)
 An 8-sector radial Pie Menu mapped to **`Ctrl+Tab`** for toggling global workflow condition flags:
 - **Duplicate RefLay (North East / `NE`):** Toggles layer duplication step in Refine Sketch OP.
 - **Keep Aspect Ratio (West / `W`):** Toggles uniform aspect ratio preservation vs default scaling in Fit Layer to Canvas OP.
@@ -59,18 +59,18 @@ An 8-sector radial Pie Menu mapped to **`Ctrl+Tab`** for toggling global workflo
 
 ---
 
-### 4. ⚡ Quick Script Engine (`quick_script_engine`)
+### 4. Quick Script Engine (`quick_script_engine`)
 Workflow automation extension providing utility commands:
 - **Create Incremental Layer:** Parses integer suffix on the active layer name and creates a new paint layer with incremented `+1` name.
 
 ---
 
-### 5. 🖼️ Dummy Docker Panel (`dummy_docker`)
+### 5. Dummy Docker Panel (`dummy_docker`)
 Dockable side panel UI template registered under **Settings → Dockers → Dummy Docker Panel**. Demonstrates PyQt widget layout, button signals, and canvas change tracking.
 
 ---
 
-## 🛠️ Windows Installation (Directory Junctions)
+## Windows Installation (Directory Junctions)
 
 Krita expects Python plugins to reside in `%APPDATA%\krita\pykrita\`. On Windows, you can create **Directory Junctions (`mklink /J`)** to link this development repository directly into Krita without requiring administrator privileges:
 
@@ -103,7 +103,7 @@ foreach ($p in $plugins) {
 
 ---
 
-## 🚀 How to Enable in Krita
+## How to Enable in Krita
 
 1. Open Krita.
 2. Go to **Settings** → **Configure Krita...** → **Python Plugin Manager**.
@@ -112,12 +112,12 @@ foreach ($p in $plugins) {
 
 ---
 
-## 📖 Developer Documentation
+## Developer Documentation
 
 For detailed PyKrita API reference, action management, directory layouts, and agent development guidelines, see [AGENTS.md](AGENTS.md).
 
 ---
 
-## 📜 License
+## License
 
 [MIT License](LICENSE)

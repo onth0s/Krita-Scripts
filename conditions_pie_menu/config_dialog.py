@@ -1,3 +1,5 @@
+from typing import Any, Dict
+
 from PyQt5.QtWidgets import QCheckBox, QGridLayout, QLabel, QLineEdit
 
 from krita_pie_menu import SECTOR_NAMES, BasePieConfigDialog
@@ -47,7 +49,10 @@ class ConditionsConfigDialog(BasePieConfigDialog):
 
             self.inputs[code] = (lbl_edit, act_edit)
 
-    def collect_config(self):
+    def collect_config(self) -> Dict[str, Any]:
+        # build_sector_editors() always runs in init_base_ui() before this is called.
+        assert self.chk_dup_reflay is not None
+        assert self.chk_keep_ar is not None
         cfg = {
             "duplicate_reflay": self.chk_dup_reflay.isChecked(),
             "keep_aspect_ratio": self.chk_keep_ar.isChecked(),

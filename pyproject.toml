@@ -7,10 +7,13 @@ name = "krita-scripts"
 version = "1.0.0"
 description = "Collection of Krita Python scripts, extensions, dockers, and Blender-style radial pie menu tools."
 authors = [{ name = "Leonardo" }]
-requires-python = ">=3.8"
+requires-python = ">=3.9"
+
+[project.optional-dependencies]
+dev = ["ruff", "mypy", "pytest"]
 
 [tool.mypy]
-python_version = "3.8"
+python_version = "3.10"
 warn_return_any = false
 warn_unused_configs = true
 ignore_missing_imports = true
@@ -18,7 +21,7 @@ check_untyped_defs = true
 
 [tool.ruff]
 line-length = 120
-target-version = "py38"
+target-version = "py310"
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I"]
