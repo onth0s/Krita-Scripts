@@ -112,7 +112,7 @@ def test_bw_creates_non_4byte_pixel(monkeypatch):
 
     doc = _FixedDoc(None)
     app = App(doc)
-    logged = _wire(monkeypatch)
+    _wire(monkeypatch)
     monkeypatch.setattr(bw, "Krita", type("_S", (), {"instance": staticmethod(lambda: app)}))
 
     bw.execute_bw_preview()
