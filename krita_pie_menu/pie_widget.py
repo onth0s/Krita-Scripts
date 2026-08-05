@@ -1,4 +1,3 @@
-import math
 from typing import Any, Callable, Dict, Optional, Tuple
 
 from PyQt5.QtCore import QPoint, Qt
@@ -6,6 +5,7 @@ from PyQt5.QtGui import QBrush, QColor, QCursor, QPainter, QPen
 from PyQt5.QtWidgets import QPushButton, QWidget
 
 from .base_config_dialog import SECTOR_CODES
+from .geometry import direction_from_vector
 from .toast_notification import ToastNotification
 
 WIDGET_SIZE = 520
@@ -252,32 +252,11 @@ class PieMenuWidget(QWidget):
 
         dx = cursor_pos.x() - origin.x()
         dy = cursor_pos.y() - origin.y()
-        dist = math.hypot(dx, dy)
 
         old_direction = self.active_direction
 
-        # Circular neutral deadzone (radius DEADZONE_RADIUS px)
-        if dist < DEADZONE_RADIUS:
-            self.active_direction = None
-        else:
-            angle = math.degrees(math.atan2(dy, dx))
-            # 8 Sectors of 45 degrees each
-            if -112.5 <= angle < -67.5:
-                self.active_direction = "N"
-            elif -67.5 <= angle < -22.5:
-                self.active_direction = "NE"
-            elif -22.5 <= angle < 22.5:
-                self.active_direction = "E"
-            elif 22.5 <= angle < 67.5:
-                self.active_direction = "SE"
-            elif 67.5 <= angle < 112.5:
-                self.active_direction = "S"
-            elif 112.5 <= angle < 157.5:
-                self.active_direction = "SW"
-            elif angle >= 157.5 or angle < -157.5:
-                self.active_direction = "W"
-            elif -157.5 <= angle < -112.5:
-                self.active_direction = "NW"
+        # Circular neutral deadzone (radius DEADZONE_RADIUS px) + 8-sector angle mapping
+        self.active_direction = direction_from_vector(dx, dy, DEADZONE_RADIUS)
 
         if self.active_direction != old_direction:
             self.update_button_highlights()

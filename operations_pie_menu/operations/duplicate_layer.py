@@ -7,7 +7,6 @@ from krita_pie_menu import (
     make_doc_active_validator,
 )
 
-
 validate_duplicate_layer = make_doc_active_validator()
 
 

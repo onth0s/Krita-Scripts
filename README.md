@@ -118,6 +118,22 @@ For detailed PyKrita API reference, action management, directory layouts, and ag
 
 ---
 
+## Development & Testing
+
+Run the full verification protocol from the repo root (see `AGENTS.md` §10):
+
+```pwsh
+pip install -e ".[dev]"   # ruff, mypy, pytest
+ruff check .
+python -m compileall -q krita_pie_menu filters_pie_menu operations_pie_menu conditions_pie_menu quick_script_engine dummy_docker
+mypy krita_pie_menu operations_pie_menu filters_pie_menu conditions_pie_menu quick_script_engine dummy_docker
+python -m pytest -q
+```
+
+The `tests/` suite runs headlessly: `tests/conftest.py` injects `krita`/PyQt5 stand-ins only when the real modules are absent, so pure logic (sector geometry, config deep-merge, condition flags, `OP_HANDLERS` registry, `_execute_sector` behavior) is verifiable in CI (`.github/workflows/ci.yml`) without Krita. Runtime behavior still requires a manual Krita smoke test.
+
+---
+
 ## License
 
 [MIT License](LICENSE)

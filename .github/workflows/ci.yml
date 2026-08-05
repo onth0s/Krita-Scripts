@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install tooling
+        run: |
+          pip install --upgrade pip
+          pip install ruff mypy pytest
+
+      - name: Ruff lint
+        run: ruff check .
+
+      - name: Byte-compile all plugin modules
+        run: python -m compileall -q krita_pie_menu filters_pie_menu operations_pie_menu conditions_pie_menu quick_script_engine dummy_docker
+
+      - name: Mypy typecheck
+        run: mypy krita_pie_menu operations_pie_menu filters_pie_menu conditions_pie_menu quick_script_engine dummy_docker
+
+      - name: Pytest
+        run: pytest -q

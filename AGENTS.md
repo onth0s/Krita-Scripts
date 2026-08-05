@@ -318,4 +318,36 @@ When an interrupt key (such as <kbd>F11</kbd> or <kbd>Esc</kbd>) is tapped while
 - **CRITICAL BUG IF NOT FILTERED**: If `keyReleaseEvent` calls `cleanup_and_close()` on *any* key release while `is_interrupted` is True, releasing <kbd>F11</kbd> will close the widget and destroy `grabKeyboard()` prematurely while <kbd>Space</kbd> is still held down! (Right-Click interrupt worked because mouse releases do not trigger `keyReleaseEvent`).
 - **MANDATORY PATTERN**: In `keyReleaseEvent()`, when `is_interrupted` is True, ONLY call `cleanup_and_close()` if `event.key()` is in `trigger_keys` (`Space`, `Tab`, `Ctrl`, `Alt`, `Enter`). Ignore interrupt key releases (<kbd>F11</kbd>, <kbd>Esc</kbd>) so background listening continues cleanly until `onSpaceRelease`.
 
+---
+
+## 10. Verification Protocol & Test Harness
+
+The gates below are the acceptance criteria for every refactoring phase (mirrored in `.github/workflows/ci.yml`). Run all five and require zero findings before committing:
+
+```pwsh
+ruff check .                                        # 0 findings
+python -m compileall -q krita_pie_menu filters_pie_menu operations_pie_menu conditions_pie_menu quick_script_engine dummy_docker
+mypy krita_pie_menu operations_pie_menu filters_pie_menu conditions_pie_menu quick_script_engine dummy_docker
+python -m pytest -q                                 # tests/ suite
+```
+
+Manual Krita smoke (headless impossible — CI cannot cover it): Space filters gesture/interrupt; Ctrl+Space ops; Ctrl+Tab condition toggles persist; double-toast under 2.5s no crash; config dialogs save intact.
+
+### 10.1 Headless Test Bootstrap (`tests/conftest.py`)
+
+`pytest` runs outside Krita, where `krita` and `PyQt5` do not exist. `conftest.py` injects minimal stubs into `sys.modules` **only when the real modules are absent** (running inside Krita uses the real bindings):
+
+- Every exposed name (widgets, `Qt`, `QTimer`, `krita.Extension`, ...) is the same `_QtWidgetStub` class backed by a `_StubMeta` metaclass, so subclassing (`class PieMenuWidget(QWidget)`) and constructor calls work, and unknown attributes/enum members resolve to a callable no-op `_Stub`.
+- Enum values combined with `|` (`Qt.FramelessWindowHint | Qt.Popup`) work via `_Stub.__or__`.
+- Pure-logic tests construct widgets and exercise flow control with no event loop.
+
+### 10.2 What the Suite Covers
+
+- `tests/test_geometry.py` — `direction_from_vector` deadzone + 8-sector mapping (pure, no stubs needed at runtime of the function).
+- `tests/test_utils.py` — `load_config` deep-merge, missing/unreadable config fallback, `save_config`, condition-flag round-trip via `CONDITIONS_CONFIG_PATH` reassignment, protected/empty/u8-rgba predicates.
+- `tests/test_pie_widget.py` — `SECTOR_CODES` canonical order, `SECTOR_NAMES` derivation, `_execute_sector` enable/disable/False-suppression toast behavior, validator state polling.
+- `tests/test_operations_registry.py` — `OP_HANDLERS` registry keys, `_unassigned_validator`, `build_pie_config` round-trip, refine-callback condition wiring, stub callbacks toasting instead of `QMessageBox`.
+
+> **Rule for new code:** keep pure logic (geometry, config, name derivation, validators) free of Krita/Qt calls so it stays unit-testable; route side-effecting bits behind small functions the tests can monkeypatch.
+
 
