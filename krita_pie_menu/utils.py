@@ -30,6 +30,17 @@ def is_u8_rgba(doc: Any) -> bool:
     return doc.colorModel() == "RGBA" and doc.colorDepth() == "U8"
 
 
+def is_empty_paint_layer(node: Any) -> bool:
+    """
+    Returns True when `node` is a paint layer with no painted content
+    (zero-width or zero-height bounds).
+    """
+    if not node or not hasattr(node, "type") or node.type() != "paintlayer":
+        return False
+    b = node.bounds()
+    return b.width() <= 0 or b.height() <= 0
+
+
 def _resolve_repo_root() -> str:
     return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 

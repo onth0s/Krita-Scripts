@@ -1,19 +1,23 @@
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, Optional, Tuple
 
 from PyQt5.QtWidgets import QDialog, QGridLayout, QHBoxLayout, QLabel, QMessageBox, QPushButton, QVBoxLayout
 
 from .utils import load_config, save_config
 
-SECTOR_NAMES = [
-    ("N", "North (Up)"),
-    ("NE", "North-East"),
-    ("E", "East (Right)"),
-    ("SE", "South-East"),
-    ("S", "South (Down)"),
-    ("SW", "South-West"),
-    ("W", "West (Left)"),
-    ("NW", "North-West"),
-]
+SECTOR_CODES: Tuple[str, ...] = ("N", "NE", "E", "SE", "S", "SW", "W", "NW")
+
+SECTOR_LABELS = {
+    "N": "North (Up)",
+    "NE": "North-East",
+    "E": "East (Right)",
+    "SE": "South-East",
+    "S": "South (Down)",
+    "SW": "South-West",
+    "W": "West (Left)",
+    "NW": "North-West",
+}
+
+SECTOR_NAMES = [(code, SECTOR_LABELS[code]) for code in SECTOR_CODES]
 
 
 class BasePieConfigDialog(QDialog):

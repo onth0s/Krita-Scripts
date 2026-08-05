@@ -1,5 +1,5 @@
 import os
-from typing import Tuple
+from typing import Any, Callable, Dict, Tuple
 
 from krita import Krita
 
@@ -40,6 +40,20 @@ def _unassigned_validator() -> Tuple[bool, str]:
     return False, "Sector not configured."
 
 
+def _make_refine_callback(duplicate_reflay: bool) -> Callable[[], None]:
+    return lambda: execute_refine_sketch(duplicate_reflay=duplicate_reflay)
+
+
+OP_HANDLERS: Dict[str, Callable[[], None]] = {
+    "op_setup_canvas": execute_init_canvas,
+    "op_sanitize_group": execute_sanitize_group,
+    "op_merge_to_black": execute_merge_to_black,
+    "op_fit_layer": execute_fit_layer,
+    "op_bw_preview": execute_bw_preview,
+    "op_duplicate_layer": execute_duplicate_layer,
+}
+
+
 class OperationsPieMenuExtension(BasePieMenuExtension):
     def __init__(self, parent):
         config_path = os.path.join(os.path.dirname(__file__), "config.json")
@@ -65,42 +79,31 @@ class OperationsPieMenuExtension(BasePieMenuExtension):
 
     def build_pie_config(self):
         config = self.load_config()
-        callbacks = {}
-        items_meta = {}
-        validators = {}
-
-        validators["N"] = validate_refine_sketch
-        validators["NE"] = validate_sanitize_group
-        validators["E"] = _unassigned_validator
-        validators["SE"] = validate_bw_preview
-        validators["S"] = validate_init_canvas
-        validators["SW"] = validate_merge_to_black
-        validators["W"] = validate_fit_layer
-        validators["NW"] = validate_duplicate_layer
+        callbacks: Dict[str, Any] = {}
+        items_meta: Dict[str, Any] = {}
+        validators: Dict[str, Any] = {
+            "N": validate_refine_sketch,
+            "NE": validate_sanitize_group,
+            "E": _unassigned_validator,
+            "SE": validate_bw_preview,
+            "S": validate_init_canvas,
+            "SW": validate_merge_to_black,
+            "W": validate_fit_layer,
+            "NW": validate_duplicate_layer,
+        }
 
         dup_reflay = self._get_duplicate_reflay_condition()
+        refine_callback = _make_refine_callback(dup_reflay)
 
         for code, data in config.items():
             act_id = data.get("action_id", "")
             label = data.get("label", "")
             items_meta[code] = (label, act_id)
 
-            if code == "S" or act_id == "op_setup_canvas":
-                callbacks[code] = execute_init_canvas
-            elif code == "N" or act_id == "op_refine_sketch" or act_id == "op_stub_north":
-                callbacks[code] = lambda dup=dup_reflay: execute_refine_sketch(duplicate_reflay=dup)
-            elif code == "NE" or act_id == "op_sanitize_group":
-                callbacks[code] = execute_sanitize_group
-            elif code == "SW" or act_id == "op_merge_to_black" or act_id == "op_placeholder_sw":
-                callbacks[code] = execute_merge_to_black
-            elif code == "W" or act_id == "op_stub_west" or act_id == "op_fit_layer":
-                callbacks[code] = execute_fit_layer
-            elif code == "SE" or act_id == "op_bw_preview":
-                callbacks[code] = execute_bw_preview
-            elif code == "NW" or act_id == "op_duplicate_layer":
-                callbacks[code] = execute_duplicate_layer
+            if act_id == "op_refine_sketch":
+                callbacks[code] = refine_callback
             else:
-                callbacks[code] = self.make_stub_callback(code, label, act_id)
+                callbacks[code] = OP_HANDLERS.get(act_id, self.make_stub_callback(code, label, act_id))
 
         return callbacks, items_meta, validators, {}
 

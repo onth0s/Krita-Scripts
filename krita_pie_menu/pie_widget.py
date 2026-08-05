@@ -5,6 +5,7 @@ from PyQt5.QtCore import QPoint, Qt
 from PyQt5.QtGui import QBrush, QColor, QCursor, QPainter, QPen
 from PyQt5.QtWidgets import QPushButton, QWidget
 
+from .base_config_dialog import SECTOR_CODES
 from .toast_notification import ToastNotification
 
 WIDGET_SIZE = 520
@@ -50,8 +51,7 @@ class PieMenuWidget(QWidget):
         self.init_ui()
 
     def evaluate_sector_states(self):
-        directions = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
-        for key in directions:
+        for key in SECTOR_CODES:
             validator = self.validators.get(key)
             if validator:
                 try:
@@ -67,8 +67,8 @@ class PieMenuWidget(QWidget):
                 self.sector_states[key] = (True, "")
 
     def init_ui(self):
-        # 520x520 widget area with (260, 260) center
-        self.setFixedSize(520, 520)
+        # WIDGET_SIZE x WIDGET_SIZE widget area with (CENTER_OFFSET, CENTER_OFFSET) center
+        self.setFixedSize(WIDGET_SIZE, WIDGET_SIZE)
 
         obj_name = self.objectName()
         accent = QColor(self.accent_color)
@@ -121,10 +121,10 @@ class PieMenuWidget(QWidget):
         """
         self.setStyleSheet(btn_style)
 
-        center_x, center_y = 260, 260
-        btn_w, btn_h = 150, 36
+        center_x, center_y = CENTER_OFFSET, CENTER_OFFSET
+        btn_w, btn_h = BUTTON_WIDTH, BUTTON_HEIGHT
 
-        # 8 Directional Positions relative to center (260, 260)
+        # 8 Directional Positions relative to center (CENTER_OFFSET, CENTER_OFFSET)
         positions = {
             "N": (center_x - btn_w // 2, center_y - 150),  # North
             "NE": (center_x + 75, center_y - 95),  # North-East
@@ -164,17 +164,22 @@ class PieMenuWidget(QWidget):
 
     def make_click_handler(self, key, callback):
         def handler():
-            is_enabled, reason = self.sector_states.get(key, (True, ""))
-            label = self.items_meta[key][0] if key in self.items_meta else key
-            self.cleanup_and_close()
-            if is_enabled:
-                ToastNotification.show_toast(f"Triggered: {label}", toast_type="info")
-                if callback:
-                    callback()
-            else:
-                ToastNotification.show_toast(reason or "Action is disabled in current context.", toast_type="warning")
+            self._execute_sector(key, callback)
 
         return handler
+
+    def _execute_sector(self, key, callback):
+        is_enabled, reason = self.sector_states.get(key, (True, ""))
+        label = self.items_meta[key][0] if key in self.items_meta else key
+        self.cleanup_and_close()
+        if not is_enabled:
+            ToastNotification.show_toast(reason or "Action is disabled in current context.", toast_type="warning")
+            return
+        result = callback() if callback else None
+        if result is False:
+            ToastNotification.show_toast(f"Action '{label}' could not be executed.", toast_type="warning")
+            return
+        ToastNotification.show_toast(f"Triggered: {label}", toast_type="info")
 
     def show_at_cursor(self):
         self.evaluate_sector_states()
@@ -189,7 +194,7 @@ class PieMenuWidget(QWidget):
 
         cursor_pos = QCursor.pos()
         self.origin_pos = cursor_pos
-        self.move(cursor_pos.x() - 260, cursor_pos.y() - 260)
+        self.move(cursor_pos.x() - CENTER_OFFSET, cursor_pos.y() - CENTER_OFFSET)
         self.active_direction = None
         self.is_interrupted = False
         self.update_button_highlights()
@@ -203,7 +208,7 @@ class PieMenuWidget(QWidget):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
 
-        center = QPoint(260, 260)
+        center = QPoint(CENTER_OFFSET, CENTER_OFFSET)
 
         # Circular neutral center zone rendering (Radius 26px)
         accent = QColor(self.accent_color)
@@ -243,7 +248,7 @@ class PieMenuWidget(QWidget):
         cursor_pos = QCursor.pos()
         origin = getattr(self, "origin_pos", None)
         if origin is None:
-            origin = self.mapToGlobal(QPoint(260, 260))
+            origin = self.mapToGlobal(QPoint(CENTER_OFFSET, CENTER_OFFSET))
 
         dx = cursor_pos.x() - origin.x()
         dy = cursor_pos.y() - origin.y()
@@ -251,8 +256,8 @@ class PieMenuWidget(QWidget):
 
         old_direction = self.active_direction
 
-        # Circular neutral deadzone (radius 45px)
-        if dist < 45:
+        # Circular neutral deadzone (radius DEADZONE_RADIUS px)
+        if dist < DEADZONE_RADIUS:
             self.active_direction = None
         else:
             angle = math.degrees(math.atan2(dy, dx))
@@ -345,22 +350,10 @@ class PieMenuWidget(QWidget):
     def trigger_selected_action(self):
         self.update_selection_from_mouse()
         target_direction = self.active_direction
-        is_enabled, reason = self.sector_states.get(target_direction, (True, "")) if target_direction else (True, "")
-        target_cb = self.callbacks.get(target_direction) if target_direction else None
-        label = (
-            self.items_meta[target_direction][0]
-            if target_direction and target_direction in self.items_meta
-            else target_direction
-        )
-
-        self.cleanup_and_close()
         if target_direction:
-            if is_enabled:
-                ToastNotification.show_toast(f"Triggered: {label}", toast_type="info")
-                if target_cb:
-                    target_cb()
-            else:
-                ToastNotification.show_toast(reason or "Action is disabled in current context.", toast_type="warning")
+            self._execute_sector(target_direction, self.callbacks.get(target_direction))
+        else:
+            self.cleanup_and_close()
 
     def cleanup_and_close(self):
         self.is_interrupted = False

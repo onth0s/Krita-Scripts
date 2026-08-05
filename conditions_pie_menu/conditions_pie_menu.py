@@ -1,8 +1,8 @@
 import os
 
-from PyQt5.QtWidgets import QMessageBox
+from krita_pie_menu import SECTOR_CODES, BasePieMenuExtension, ToastNotification
 
-from krita_pie_menu import BasePieMenuExtension, ToastNotification
+from .config_dialog import ConditionsConfigDialog
 
 DEFAULT_CONDITIONS_CONFIG = {
     "duplicate_reflay": False,
@@ -64,8 +64,8 @@ class ConditionsPieMenuExtension(BasePieMenuExtension):
         def disabled_stub():
             return False, "Stub condition not configured."
 
-        # 6 stubs: N, E, SE, S, SW, NW
-        for code in ["N", "E", "SE", "S", "SW", "NW"]:
+        # 6 stubs: all sectors except the NE/W toggles
+        for code in [c for c in SECTOR_CODES if c not in ("NE", "W")]:
             validators[code] = disabled_stub
             callbacks[code] = self.make_stub_callback(code)
 
@@ -80,7 +80,7 @@ class ConditionsPieMenuExtension(BasePieMenuExtension):
         callbacks["W"] = self.toggle_keep_aspect_ratio
 
         # Build items_meta
-        for code in ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]:
+        for code in SECTOR_CODES:
             data = cfg.get(code, {})
             label = data.get("label", code)
             act_id = data.get("action_id", "")
@@ -102,10 +102,5 @@ class ConditionsPieMenuExtension(BasePieMenuExtension):
         return lambda: ToastNotification.show_toast(f"Condition [{code}] stub not implemented", toast_type="info")
 
     def open_config_dialog(self):
-        try:
-            from .config_dialog import ConditionsConfigDialog
-
-            dlg = ConditionsConfigDialog(self.config_path, on_save_callback=None)
-            dlg.exec_()
-        except ImportError:
-            QMessageBox.information(None, "Conditions Pie Menu", "Conditions Config Dialog not configured yet.")
+        dlg = ConditionsConfigDialog(self.config_path, on_save_callback=None)
+        dlg.exec_()

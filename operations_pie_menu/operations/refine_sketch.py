@@ -9,6 +9,8 @@ from PyQt5.QtWidgets import QApplication, QMessageBox
 from krita_pie_menu import (
     create_incremental_layer,
     find_brush_preset,
+    is_empty_paint_layer,
+    is_protected_layer,
     log_error,
     log_info,
     log_warning,
@@ -18,17 +20,10 @@ from krita_pie_menu import (
 )
 
 
-def is_layer_empty(node: Any) -> bool:
-    if not node or node.type() != "paintlayer":
-        return False
-    b = node.bounds()
-    return b.width() <= 0 or b.height() <= 0
-
-
 def _refine_sketch_extra_checks(doc: Any, node: Any) -> Tuple[bool, str]:
     if node.type() == "grouplayer":
         return False, "Refine Sketch requires a Paint Layer (Group selected)."
-    if is_layer_empty(node):
+    if is_empty_paint_layer(node):
         return False, "Active layer is empty."
     return True, ""
 
@@ -202,7 +197,7 @@ def execute_refine_sketch(duplicate_reflay: bool = False) -> None:
         )
         return
 
-    if is_layer_empty(active_layer):
+    if is_empty_paint_layer(active_layer):
         QMessageBox.warning(
             None,
             "Operations Pie Menu",

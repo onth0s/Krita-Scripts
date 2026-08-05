@@ -1,4 +1,4 @@
-from .base_config_dialog import SECTOR_NAMES, BasePieConfigDialog
+from .base_config_dialog import SECTOR_CODES, SECTOR_NAMES, BasePieConfigDialog
 from .base_extension import BasePieMenuExtension
 from .logger import log_error, log_info, log_warning
 from .pie_widget import PieMenuWidget
@@ -10,6 +10,7 @@ from .utils import (
     find_brush_preset,
     get_condition_flag,
     get_incremental_layer_name,
+    is_empty_paint_layer,
     is_protected_layer,
     is_u8_rgba,
     load_config,
@@ -25,11 +26,13 @@ __all__ = [
     "ToastNotification",
     "BasePieMenuExtension",
     "BasePieConfigDialog",
+    "SECTOR_CODES",
     "SECTOR_NAMES",
     "PROTECTED_NAMES",
     "CONDITIONS_CONFIG_PATH",
     "is_protected_layer",
     "is_u8_rgba",
+    "is_empty_paint_layer",
     "get_condition_flag",
     "read_condition_flag",
     "log_info",

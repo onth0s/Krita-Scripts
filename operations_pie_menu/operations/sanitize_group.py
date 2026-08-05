@@ -1,16 +1,9 @@
-from typing import Any, Tuple
+from typing import Tuple
 
 from krita import Krita
 from PyQt5.QtWidgets import QMessageBox
 
-from krita_pie_menu import is_protected_layer, log_error, log_info
-
-
-def _is_empty_paint_layer(node: Any) -> bool:
-    if node.type() != "paintlayer":
-        return False
-    b = node.bounds()
-    return b.width() <= 0 or b.height() <= 0
+from krita_pie_menu import is_empty_paint_layer, is_protected_layer, log_error, log_info
 
 
 def validate_sanitize_group() -> Tuple[bool, str]:
@@ -62,7 +55,7 @@ def execute_sanitize_group() -> None:
     try:
         # ── 1. Purge empty non-protected paint layers ────────────────────────
         for child in list(group_layer.childNodes()):
-            if not is_protected_layer(child) and _is_empty_paint_layer(child):
+            if not is_protected_layer(child) and is_empty_paint_layer(child):
                 child.remove()
 
         # ── 2. Find B&W layer if present ──────────────────────────────────────
