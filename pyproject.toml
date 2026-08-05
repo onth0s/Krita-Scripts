@@ -10,7 +10,7 @@ authors = [{ name = "Leonardo" }]
 requires-python = ">=3.9"
 
 [project.optional-dependencies]
-dev = ["ruff", "mypy", "pytest"]
+dev = ["ruff", "mypy", "pytest", "pytest-cov"]
 
 [tool.setuptools.packages.find]
 include = [
