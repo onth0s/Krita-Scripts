@@ -12,8 +12,16 @@ and unknown attributes / enum members (``Qt.FramelessWindowHint``,
 callable ``_Stub``. Pure-logic tests can then construct widgets and exercise
 flow control without a Qt event loop.
 """
+import os
 import sys
 from types import ModuleType
+
+# Plain `pytest` does not add the repo root to sys.path (only `python -m pytest`
+# does). Insert it so `import krita_pie_menu` / `operations_pie_menu` resolve
+# identically on CI and locally regardless of how pytest was launched.
+_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _REPO_ROOT not in sys.path:
+    sys.path.insert(0, _REPO_ROOT)
 
 
 class _Stub:
