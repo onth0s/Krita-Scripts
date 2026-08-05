@@ -175,7 +175,9 @@ def test_show_pie_menu_creates_widget(monkeypatch):
         def show_at_cursor(self):
             shown.append(1)
 
-        isVisible = lambda self: False
+        def isVisible(self):
+            return False
+
         destroyed = type("_S", (), {"connect": staticmethod(lambda cb: None)})()
 
     monkeypatch.setattr(base_extension, "PieMenuWidget", _FakeWidget)
