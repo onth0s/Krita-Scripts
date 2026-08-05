@@ -80,6 +80,18 @@ class _Stub:
     def __neg__(self):
         return self
 
+    def __lt__(self, other):
+        return False
+
+    def __le__(self, other):
+        return False
+
+    def __gt__(self, other):
+        return False
+
+    def __ge__(self, other):
+        return False
+
     def __int__(self):
         return 0
 
