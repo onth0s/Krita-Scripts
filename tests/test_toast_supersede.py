@@ -44,3 +44,15 @@ def test_show_toast_no_parent_geometry_path():
     # the stub must let it run without raising.
     ToastNotification.show_toast("noparent", toast_type="info")
     assert ToastNotification._active_toast is not None
+
+
+def test_fade_out_never_raises_after_close():
+    ToastNotification.show_toast("fade", toast_type="info")
+    toast = ToastNotification._active_toast
+    toast.close()
+    toast.fade_out()  # superseded/closed toast: timer may fire late, must not raise
+
+
+def test_get_left_dockers_offset_headless():
+    # Outside Krita there is no active window, so the offset must be 0.
+    assert ToastNotification.get_left_dockers_offset() == 0
