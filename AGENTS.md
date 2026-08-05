@@ -347,6 +347,7 @@ Manual Krita smoke (headless impossible — CI cannot cover it): Space filters g
 - `tests/test_utils.py` — `load_config` deep-merge, missing/unreadable config fallback, `save_config`, condition-flag round-trip via `CONDITIONS_CONFIG_PATH` reassignment, protected/empty/u8-rgba predicates.
 - `tests/test_pie_widget.py` — `SECTOR_CODES` canonical order, `SECTOR_NAMES` derivation, `_execute_sector` enable/disable/False-suppression toast behavior, validator state polling.
 - `tests/test_operations_registry.py` — `OP_HANDLERS` registry keys, `_unassigned_validator`, `build_pie_config` round-trip, refine-callback condition wiring, stub callbacks toasting instead of `QMessageBox`.
+- `tests/test_imports.py` — every plugin module imports cleanly headlessly (catches import-time breakage, e.g. extension registrations in `__init__.py`, that `compileall`/`mypy` would miss).
 
 > **Rule for new code:** keep pure logic (geometry, config, name derivation, validators) free of Krita/Qt calls so it stays unit-testable; route side-effecting bits behind small functions the tests can monkeypatch.
 
