@@ -46,5 +46,14 @@ Desktop.ini
 *.bak
 *.tmp
 
+# Test/code-coverage artifacts
+.coverage
+coverage.xml
+htmlcov/
+*/.coverage
+
+# Logger test stray output (logger._test_log_path fallback directory)
+;;;/
+
 # Runtime config (per-user sector bindings / toggles); see config.example.json
 config.json
