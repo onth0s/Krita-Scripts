@@ -275,7 +275,6 @@ def _fake_qimage(monkeypatch, data):
 
     class _FakeQImage:
         Format_ARGB32 = 5
-        format = None
 
         def __init__(self, payload, width, height, bpr, fmt):
             self._fmt = fmt
