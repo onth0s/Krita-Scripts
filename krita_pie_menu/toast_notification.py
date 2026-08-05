@@ -50,6 +50,10 @@ class ToastNotification(QWidget):
         self.setGraphicsEffect(self.opacity_effect)
         self.opacity_effect.setOpacity(0.0)
 
+        self._fade_timer = QTimer(self)
+        self._fade_timer.setSingleShot(True)
+        self._fade_timer.timeout.connect(self.fade_out)
+
     def paintEvent(self, event):
         from PyQt5.QtGui import QBrush, QPainter, QPainterPath, QPen
 
@@ -92,17 +96,21 @@ class ToastNotification(QWidget):
         self.anim.setEasingCurve(QEasingCurve.OutCubic)
         self.anim.start()
 
-        # Schedule fade out
-        QTimer.singleShot(self.duration_ms, self.fade_out)
+        # Schedule fade out via the cancellable instance timer
+        self._fade_timer.start(self.duration_ms)
 
     def fade_out(self):
-        self.anim_out = QPropertyAnimation(self.opacity_effect, b"opacity")
-        self.anim_out.setDuration(300)
-        self.anim_out.setStartValue(1.0)
-        self.anim_out.setEndValue(0.0)
-        self.anim_out.setEasingCurve(QEasingCurve.InCubic)
-        self.anim_out.finished.connect(self.close)
-        self.anim_out.start()
+        try:
+            self.anim_out = QPropertyAnimation(self.opacity_effect, b"opacity")
+            self.anim_out.setDuration(300)
+            self.anim_out.setStartValue(1.0)
+            self.anim_out.setEndValue(0.0)
+            self.anim_out.setEasingCurve(QEasingCurve.InCubic)
+            self.anim_out.finished.connect(self.close)
+            self.anim_out.start()
+        except RuntimeError:
+            # Toast was superseded/closed while the fade timer was still pending.
+            pass
 
     @classmethod
     def get_left_dockers_offset(cls):
@@ -154,7 +162,12 @@ class ToastNotification(QWidget):
     def show_toast(cls, message, parent=None, duration_ms=2500, toast_type="warning"):
         if cls._active_toast:
             try:
-                cls._active_toast.close()
+                prev = cls._active_toast
+                try:
+                    prev._fade_timer.stop()
+                except Exception:
+                    pass
+                prev.close()
             except Exception:
                 pass
             cls._active_toast = None

@@ -17,6 +17,19 @@ def is_protected_layer(node: Any) -> bool:
     return node.name().strip().upper() in PROTECTED_NAMES
 
 
+def is_u8_rgba(doc: Any) -> bool:
+    """
+    Returns True only for 8-bit RGBA documents.
+
+    Pixel-manipulation helpers that build raw byte buffers (e.g. QImage with a
+    fixed 4-bytes-per-pixel stride) are only safe for this color model/depth
+    combination. Call this guard before touching pixel data.
+    """
+    if not doc or not hasattr(doc, "colorModel"):
+        return False
+    return doc.colorModel() == "RGBA" and doc.colorDepth() == "U8"
+
+
 def read_condition_flag(key: str, default: bool = False) -> bool:
     """
     Safely queries a global condition flag from conditions_pie_menu/config.json.

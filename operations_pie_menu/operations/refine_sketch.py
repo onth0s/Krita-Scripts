@@ -236,10 +236,14 @@ def execute_refine_sketch(duplicate_reflay: bool = False) -> None:
     curr_layer = doc.activeNode() or active_layer
     new_layer = create_incremental_layer(doc, curr_layer)
 
-    # Step 7b: Renumber all siblings to 1..N
+    # Step 7b: Renumber all siblings to 1..N, skipping protected layers (WHITE/B&W/LINES)
     parent = new_layer.parentNode() or doc.rootNode()
-    for idx, child in enumerate(parent.childNodes(), start=1):
-        child.setName(str(idx))
+    counter = 1
+    for child in parent.childNodes():
+        if is_protected_layer(child):
+            continue  # leave protected layers alone (see AGENTS.md ┬º8.3)
+        child.setName(str(counter))
+        counter += 1
     doc.setActiveNode(new_layer)
 
     # Step 8: Reset tools & brush preset

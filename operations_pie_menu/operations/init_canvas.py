@@ -55,6 +55,19 @@ def execute_init_canvas() -> None:
             except Exception as e:
                 log_warning("init_canvas", f"Could not remove node '{n.name()}': {e}")
 
+    elif len(all_nodes) == 1:
+        single = all_nodes[0]
+        if single.name().strip().upper() != "WHITE":
+            reply = QMessageBox.question(
+                None,
+                "Replace Layer?",
+                f"Replace existing layer '{single.name()}' with a WHITE base layer?",
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.No,
+            )
+            if reply != QMessageBox.Yes:
+                return
+
     # Prepare base layer
     top_nodes = doc.topLevelNodes()
     if top_nodes:

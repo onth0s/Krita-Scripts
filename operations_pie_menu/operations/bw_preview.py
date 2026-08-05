@@ -25,7 +25,7 @@ def execute_bw_preview() -> None:
 
     def find_bw_node(node: Any) -> Optional[Any]:
         for child in node.childNodes():
-            if child.name() == "B&W":
+            if child.name().strip().upper() == "B&W":
                 return child
             found = find_bw_node(child)
             if found:

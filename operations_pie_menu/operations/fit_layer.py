@@ -4,6 +4,7 @@ from PyQt5.QtGui import QImage
 from PyQt5.QtWidgets import QMessageBox
 
 from krita_pie_menu import (
+    is_u8_rgba,
     log_error,
     log_info,
     log_warning,
@@ -33,6 +34,18 @@ def execute_fit_layer() -> None:
     active_layer = doc.activeNode()
     if not active_layer:
         QMessageBox.warning(None, "Operations Pie Menu", "No active layer selected.")
+        return
+
+    if not is_u8_rgba(doc):
+        log_warning(
+            "fit_layer",
+            f"Fit Layer requires an 8-bit RGBA document (got {doc.colorModel()}/{doc.colorDepth()}).",
+        )
+        QMessageBox.warning(
+            None,
+            "Operations Pie Menu",
+            "Fit Layer requires an 8-bit RGBA document.\nPlease convert the image color model/depth first.",
+        )
         return
 
     doc_w = doc.width()
@@ -138,6 +151,26 @@ def execute_fit_layer() -> None:
                 scaled_layer.setAlphaLocked(active_layer.alphaLocked())
             except Exception as e:
                 log_warning("fit_layer", f"Could not restore alpha lock: {e}")
+            try:
+                scaled_layer.setOpacity(active_layer.opacity())
+            except Exception as e:
+                log_warning("fit_layer", f"Could not restore opacity: {e}")
+            try:
+                scaled_layer.setBlendingMode(active_layer.blendingMode())
+            except Exception as e:
+                log_warning("fit_layer", f"Could not restore blending mode: {e}")
+            try:
+                scaled_layer.setVisible(active_layer.visible())
+            except Exception as e:
+                log_warning("fit_layer", f"Could not restore visibility: {e}")
+            try:
+                scaled_layer.setLocked(active_layer.locked())
+            except Exception as e:
+                log_warning("fit_layer", f"Could not restore locked state: {e}")
+            try:
+                scaled_layer.setInheritAlpha(active_layer.inheritAlpha())
+            except Exception as e:
+                log_warning("fit_layer", f"Could not restore inherit alpha: {e}")
 
             parent.addChildNode(scaled_layer, active_layer)
             active_layer.remove()

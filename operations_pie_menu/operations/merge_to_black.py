@@ -8,6 +8,7 @@ from PyQt5.QtWidgets import QMessageBox
 from krita_pie_menu import (
     find_brush_preset,
     is_protected_layer,
+    is_u8_rgba,
     log_error,
     log_info,
     log_warning,
@@ -51,6 +52,18 @@ def execute_merge_to_black() -> None:
     node = doc.activeNode()
     if not node:
         QMessageBox.warning(None, "Operations Pie Menu", "No active layer selected.")
+        return
+
+    if not is_u8_rgba(doc):
+        log_warning(
+            "merge_to_black",
+            f"Merge to Black requires an 8-bit RGBA document (got {doc.colorModel()}/{doc.colorDepth()}).",
+        )
+        QMessageBox.warning(
+            None,
+            "Operations Pie Menu",
+            "Merge to Black requires an 8-bit RGBA document.\nPlease convert the image color model/depth first.",
+        )
         return
 
     if node.type() == "grouplayer":
