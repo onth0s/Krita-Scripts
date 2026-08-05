@@ -28,7 +28,7 @@
     "action_id": "op_stub_west"
   },
   "NW": {
-    "label": "Stub North West",
-    "action_id": "op_stub_nw"
+    "label": "Duplicate",
+    "action_id": "op_duplicate_layer"
   }
 }

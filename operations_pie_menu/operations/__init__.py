@@ -3,6 +3,7 @@ Subpackage exporting individual operations_pie_menu operation modules and valida
 """
 
 from .bw_preview import execute_bw_preview, validate_bw_preview
+from .duplicate_layer import execute_duplicate_layer, validate_duplicate_layer
 from .fit_layer import execute_fit_layer, validate_fit_layer
 from .init_canvas import execute_init_canvas, validate_init_canvas
 from .merge_to_black import execute_merge_to_black, validate_merge_to_black
@@ -16,6 +17,8 @@ __all__ = [
     "validate_sanitize_group",
     "execute_bw_preview",
     "validate_bw_preview",
+    "execute_duplicate_layer",
+    "validate_duplicate_layer",
     "execute_init_canvas",
     "validate_init_canvas",
     "execute_fit_layer",

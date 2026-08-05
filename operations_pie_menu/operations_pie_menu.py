@@ -8,12 +8,14 @@ from krita_pie_menu import BasePieMenuExtension, read_condition_flag
 from .config_dialog import OperationsConfigDialog
 from .operations import (
     execute_bw_preview,
+    execute_duplicate_layer,
     execute_fit_layer,
     execute_init_canvas,
     execute_merge_to_black,
     execute_refine_sketch,
     execute_sanitize_group,
     validate_bw_preview,
+    validate_duplicate_layer,
     validate_fit_layer,
     validate_init_canvas,
     validate_merge_to_black,
@@ -29,7 +31,7 @@ DEFAULT_OPERATIONS_CONFIG = {
     "S": {"label": "Init Canvas", "action_id": "op_setup_canvas"},
     "SW": {"label": "Merge to Black", "action_id": "op_merge_to_black"},
     "W": {"label": "Fit Layer to Canvas", "action_id": "op_fit_layer"},
-    "NW": {"label": "Stub North West", "action_id": "op_placeholder_nw"},
+    "NW": {"label": "Duplicate", "action_id": "op_duplicate_layer"},
 }
 
 
@@ -68,6 +70,7 @@ class OperationsPieMenuExtension(BasePieMenuExtension):
         validators["S"] = validate_init_canvas
         validators["SW"] = validate_merge_to_black
         validators["W"] = validate_fit_layer
+        validators["NW"] = validate_duplicate_layer
 
         dup_reflay = self._get_duplicate_reflay_condition()
 
@@ -88,6 +91,8 @@ class OperationsPieMenuExtension(BasePieMenuExtension):
                 callbacks[code] = execute_fit_layer
             elif code == "SE" or act_id == "op_bw_preview":
                 callbacks[code] = execute_bw_preview
+            elif code == "NW" or act_id == "op_duplicate_layer":
+                callbacks[code] = execute_duplicate_layer
             else:
                 callbacks[code] = self.make_stub_callback(code, label, act_id)
 
