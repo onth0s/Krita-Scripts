@@ -63,6 +63,21 @@ def widget():
     return PieMenuWidget({})
 
 
+@pytest.fixture
+def qt_super(monkeypatch):
+    """Give the shared stub QWidget no-op event handlers so super() calls run."""
+    from krita_pie_menu import pie_widget
+
+    for name in (
+        "paintEvent",
+        "mouseMoveEvent",
+        "keyPressEvent",
+        "keyReleaseEvent",
+        "mousePressEvent",
+    ):
+        monkeypatch.setattr(pie_widget.QWidget, name, lambda self, ev: None)
+
+
 def test_interrupt_hides_invisibly_not_with_hide(widget, monkeypatch):
     # AGENTS.md §9.2: interrupt must NOT call hide()/releaseKeyboard();
     # it must go transparent + offscreen while keeping the key grab.
@@ -149,6 +164,39 @@ def test_mouse_left_click_in_deadzone_interrupts(widget, qt_enums, monkeypatch):
     widget.active_direction = None
     widget.mousePressEvent(_Event(None, button=qt_enums["LeftButton"]))
     assert interrupted == [1]
+
+
+def test_mouse_left_click_with_direction_forwards_to_base(qt_super, qt_enums, monkeypatch):
+    widget = PieMenuWidget({})
+    widget.active_direction = "N"
+    widget.mousePressEvent(_Event(None, button=qt_enums["LeftButton"]))
+    assert widget.is_interrupted is False
+
+
+def test_mouse_other_button_forwards_to_base(qt_super, qt_enums, monkeypatch):
+    widget = PieMenuWidget({})
+    widget.mousePressEvent(_Event(None, button=object()))
+    assert widget.is_interrupted is False
+
+
+def test_keypress_autorepeat_ignored(qt_super, qt_enums, monkeypatch):
+    widget = PieMenuWidget({})
+    ev = _Event(qt_enums["Key_Space"], auto_repeat=True)
+    widget.keyPressEvent(ev)
+    assert ev.ignored is True
+
+
+def test_keypress_other_key_forwards_to_base(qt_super, qt_enums, monkeypatch):
+    widget = PieMenuWidget({})
+    widget.keyPressEvent(_Event(999))
+    assert widget.is_interrupted is False
+
+
+def test_keyrelease_other_key_forwards_to_base(qt_super, qt_enums, monkeypatch):
+    widget = PieMenuWidget({})
+    ev = _Event(999)
+    widget.keyReleaseEvent(ev)
+    assert widget.is_interrupted is False
 
 
 def test_show_at_cursor_restores_opacity_and_flags(widget, monkeypatch):
