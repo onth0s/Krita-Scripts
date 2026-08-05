@@ -77,6 +77,18 @@ class Node:
     def setAlphaLocked(self, v):
         self._alpha_locked = v
 
+    def alphaLocked(self):
+        return self._alpha_locked
+
+    def opacity(self):
+        return self._opacity
+
+    def blendingMode(self):
+        return self._blending
+
+    def inheritAlpha(self):
+        return self._inherit_alpha
+
     def setOpacity(self, v):
         self._opacity = v
 
@@ -104,6 +116,16 @@ class Group(Node):
 
     def childNodes(self):
         return list(self._children)
+
+    def findChildNodes(self, *args):
+        return list(self._children)
+
+    def duplicate(self):
+        dup = Group(self._name + "_copy", [])
+        dup._children = list(self._children)
+        for child in dup._children:
+            child._parent = dup
+        return dup
 
     def addChildNode(self, node, reference):
         node._parent = self
