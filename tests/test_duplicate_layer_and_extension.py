@@ -213,3 +213,84 @@ def test_on_widget_destroyed_clears_reference():
     ext.pie_widget = object()
     ext._on_widget_destroyed()
     assert ext.pie_widget is None
+
+
+def test_setup_is_noop():
+    ext = _Concrete(parent=None, config_path="unused.json", default_config={})
+    ext.setup()
+
+
+def test_abstract_build_pie_config_raises():
+    class _Abstract(BasePieMenuExtension):
+        pass
+
+    ext = _Abstract(parent=None, config_path="unused.json", default_config={})
+    import pytest
+
+    with pytest.raises(NotImplementedError):
+        ext.build_pie_config()
+
+
+def test_abstract_open_config_dialog_raises():
+    class _Abstract(BasePieMenuExtension):
+        pass
+
+    ext = _Abstract(parent=None, config_path="unused.json", default_config={})
+    import pytest
+
+    with pytest.raises(NotImplementedError):
+        ext.open_config_dialog()
+
+
+def test_show_pie_menu_recovers_from_stale_widget(monkeypatch):
+    from krita_pie_menu import base_extension
+
+    created = []
+    shown = []
+
+    class _Stale:
+        def isVisible(self):
+            raise RuntimeError("C++ object deleted")
+
+    class _FakeWidget:
+        def __init__(self, *args, **kwargs):
+            created.append(kwargs)
+
+        def show_at_cursor(self):
+            shown.append(1)
+
+        def isVisible(self):
+            return False
+
+        destroyed = type("_S", (), {"connect": staticmethod(lambda cb: None)})()
+
+    monkeypatch.setattr(base_extension, "PieMenuWidget", _FakeWidget)
+
+    ext = _Concrete(parent=None, config_path="unused.json", default_config={})
+    ext.pie_widget = _Stale()
+    ext.show_pie_menu()
+
+    assert created
+    assert shown == [1]
+
+
+def test_show_pie_menu_swallows_connect_error(monkeypatch):
+    from krita_pie_menu import base_extension
+
+    shown = []
+
+    class _FakeWidget:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def show_at_cursor(self):
+            shown.append(1)
+
+        destroyed = type("_S", (), {"connect": staticmethod(lambda cb: (_ for _ in ()).throw(RuntimeError("no signal")))})()
+
+    monkeypatch.setattr(base_extension, "PieMenuWidget", _FakeWidget)
+
+    ext = _Concrete(parent=None, config_path="unused.json", default_config={})
+    ext.show_pie_menu()
+
+    assert shown == [1]

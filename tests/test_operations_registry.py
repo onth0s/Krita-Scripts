@@ -70,3 +70,73 @@ def test_stub_callback_shows_toast_not_messagebox(monkeypatch):
     monkeypatch.setattr(ToastNotification, "show_toast", staticmethod(record))
     ext.execute_stub_action("E", "Stub East", "op_placeholder_east")
     assert calls == ["Stub [E] Stub East"]
+
+
+def test_create_actions_registers_both_actions():
+    import operations_pie_menu.operations_pie_menu as opmod
+
+    class _Signal:
+        def __init__(self):
+            self.cb = None
+
+        def connect(self, cb):
+            self.cb = cb
+
+    class _Action:
+        def __init__(self):
+            self.triggered = _Signal()
+
+    created = []
+
+    class _Win:
+        def createAction(self, aid, text, category):
+            created.append((aid, text, category))
+            return _Action()
+
+    ext = opmod.OperationsPieMenuExtension(parent=None)
+    ext.createActions(_Win())
+
+    assert created == [
+        ("trigger_operations_pie_menu", "Operations Pie Menu", "tools/scripts"),
+        ("configure_operations_pie_menu", "Configure Operations Pie Menu", "tools/scripts"),
+    ]
+
+
+def test_execute_stub_action_triggers_resolved_action(monkeypatch):
+    import operations_pie_menu.operations_pie_menu as opmod
+
+    ext = opmod.OperationsPieMenuExtension(parent=None)
+    triggered = []
+
+    class _Act:
+        def trigger(self):
+            triggered.append(1)
+
+    class _App:
+        def action(self, aid):
+            return _Act()
+
+    monkeypatch.setattr(opmod.Krita, "instance", staticmethod(lambda: _App()))
+    ext.execute_stub_action("E", "Stub East", "op_some_registered_action")
+
+    assert triggered == [1]
+
+
+def test_open_config_dialog_constructs_and_executes(monkeypatch):
+    import operations_pie_menu.operations_pie_menu as opmod
+
+    ext = opmod.OperationsPieMenuExtension(parent=None)
+    executed = []
+
+    class _Dlg:
+        def __init__(self, path, on_save_callback=None):
+            self.path = path
+
+        def exec_(self):
+            executed.append(self.path)
+
+    monkeypatch.setattr(opmod, "OperationsConfigDialog", _Dlg)
+    ext.open_config_dialog()
+
+    assert len(executed) == 1
+    assert executed[0].endswith("config.json")

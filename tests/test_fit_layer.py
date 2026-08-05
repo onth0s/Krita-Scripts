@@ -79,6 +79,9 @@ def _wire(monkeypatch, keep_ar=False, convert=False, u8=True):
     monkeypatch.setattr(fl, "QByteArray", lambda data: data)
 
     class _ConvImage(_FakeQImage):
+        def copy(self):
+            return self
+
         def scaled(self, w, h, *args):
             self._force_convert = convert
             return super().scaled(w, h, *args)
@@ -182,6 +185,66 @@ def test_fit_group_layer(monkeypatch):
     assert scaled_groups and doc.active[-1] is scaled_groups[0]
     assert child1._pixel is not None and child2._pixel is not None
     assert logged["info"]
+
+
+def test_fit_group_skips_empty_children(monkeypatch):
+    empty = Node("e", empty=False)
+    empty._bounds = __import__("fakes", fromlist=["Bounds"]).Bounds(0, 0, 0, 0)
+    child = Node("c1", empty=False)
+    group = Group("g", [child, empty])
+    doc, root, logged = _run_fit(monkeypatch, group)
+
+    assert group.removed is True
+    assert logged["info"]
+    assert child._pixel is not None
+
+
+def test_fit_group_keep_aspect_ratio(monkeypatch):
+    child1 = Node("c1", empty=False)
+    child2 = Node("c2", empty=False)
+    group = Group("g", [child1, child2])
+    doc, root, logged = _run_fit(monkeypatch, group, keep_ar=True)
+
+    assert group.removed is True
+    assert logged["info"]
+    assert child1._pixel is not None
+
+
+def test_fit_group_convert_format(monkeypatch):
+    child1 = Node("c1", empty=False)
+    group = Group("g", [child1])
+    doc, root, logged = _run_fit(monkeypatch, group, convert=True)
+
+    assert group.removed is True
+    assert logged["info"]
+
+
+def test_fit_paint_layer_restore_exceptions_log_warning(monkeypatch):
+    class _RestoreBoom(Node):
+        def alphaLocked(self):
+            raise RuntimeError("a")
+
+        def opacity(self):
+            raise RuntimeError("o")
+
+        def blendingMode(self):
+            raise RuntimeError("b")
+
+        def visible(self):
+            raise RuntimeError("v")
+
+        def locked(self):
+            raise RuntimeError("l")
+
+        def inheritAlpha(self):
+            raise RuntimeError("i")
+
+    active = _RestoreBoom("ink", empty=False)
+    doc, root, logged = _run_fit(monkeypatch, active)
+
+    assert active.removed is True
+    assert logged["info"]
+    assert len(logged["warning"]) == 6, logged["warning"]
 
 
 def test_fit_group_no_paint_layers(monkeypatch, infos):

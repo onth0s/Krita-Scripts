@@ -56,6 +56,88 @@ def test_show_toast_double_fires_without_crash():
     assert ToastNotification._active_toast is not None
 
 
+def test_show_toast_supersede_stop_error_swallowed(monkeypatch):
+    ToastNotification.show_toast("first", toast_type="info")
+    first = ToastNotification._active_toast
+    calls = []
+    monkeypatch.setattr(
+        first._fade_timer, "stop", lambda: (_ for _ in ()).throw(RuntimeError("timer dead"))
+    )
+    monkeypatch.setattr(first, "close", lambda: calls.append("close"))
+
+    ToastNotification.show_toast("second", toast_type="warning")
+
+    assert calls == ["close"]
+
+
+def test_show_toast_supersede_close_error_swallowed(monkeypatch):
+    ToastNotification.show_toast("first", toast_type="info")
+    first = ToastNotification._active_toast
+    monkeypatch.setattr(first._fade_timer, "stop", lambda: None)
+    monkeypatch.setattr(first, "close", lambda: (_ for _ in ()).throw(RuntimeError("deleted")))
+
+    ToastNotification.show_toast("second", toast_type="warning")
+
+    assert ToastNotification._active_toast is not first
+
+
+def test_show_toast_uses_parent_geometry(monkeypatch):
+    calls = []
+
+    class _Geo:
+        def x(self):
+            return 50
+
+        def y(self):
+            return 100
+
+        def height(self):
+            return 700
+
+    class _Parent:
+        def geometry(self):
+            calls.append("geometry")
+            return _Geo()
+
+    monkeypatch.setattr(ToastNotification, "get_left_dockers_offset", classmethod(lambda cls: 0))
+    ToastNotification.show_toast("parent", parent=_Parent(), toast_type="info")
+
+    assert calls == ["geometry"]
+    assert ToastNotification._active_toast is not None
+
+
+def test_show_toast_uses_active_window_geometry(monkeypatch):
+    import sys
+
+    class _Geo:
+        def x(self):
+            return 60
+
+        def y(self):
+            return 120
+
+        def height(self):
+            return 750
+
+    class _Win:
+        def geometry(self):
+            return _Geo()
+
+    class _AppInst:
+        def activeWindow(self):
+            return _Win()
+
+    class _FakeQApplication:
+        @staticmethod
+        def instance():
+            return _AppInst()
+
+    monkeypatch.setattr(sys.modules["PyQt5.QtWidgets"], "QApplication", _FakeQApplication)
+    ToastNotification.show_toast("activewin", toast_type="info")
+
+    assert ToastNotification._active_toast is not None
+
+
 def test_show_toast_no_parent_geometry_path():
     # Without a parent, show_toast falls back to QApplication.instance() path;
     # the stub must let it run without raising.
@@ -170,6 +252,62 @@ def test_get_left_dockers_offset_exception(monkeypatch):
     class _Win:
         def qwindow(self):
             raise RuntimeError("boom")
+
+    class _App:
+        def activeWindow(self):
+            return _Win()
+
+    class _FakeKrita:
+        instance = staticmethod(lambda: _App())
+
+    monkeypatch.setattr("krita.Krita", _FakeKrita)
+    assert ToastNotification.get_left_dockers_offset() == 0
+
+
+def test_get_left_dockers_offset_walks_parent_chain(monkeypatch):
+    from PyQt5.QtWidgets import QMainWindow
+
+    class _Wrap:
+        def __init__(self, up):
+            self._up = up
+
+        def parent(self):
+            return self._up
+
+    class _NoChild:
+        def findChild(self, cls):
+            return None
+
+        def parent(self):
+            return _Wrap(QMainWindow())
+
+    class _Win:
+        def qwindow(self):
+            return _NoChild()
+
+    class _App:
+        def activeWindow(self):
+            return _Win()
+
+    class _FakeKrita:
+        instance = staticmethod(lambda: _App())
+
+    monkeypatch.setattr("krita.Krita", _FakeKrita)
+    # The walk must climb parent() to the QMainWindow (no direct findChild hit).
+    assert ToastNotification.get_left_dockers_offset() == 0
+
+
+def test_get_left_dockers_offset_walk_finds_no_main_window(monkeypatch):
+    class _NoParent:
+        def findChild(self, cls):
+            return None
+
+        def parent(self):
+            return None
+
+    class _Win:
+        def qwindow(self):
+            return _NoParent()
 
     class _App:
         def activeWindow(self):

@@ -1,5 +1,5 @@
 import pytest
-from fakes import App, Bounds, Doc, Group, Node
+from fakes import Action, App, Bounds, Doc, Group, Node, View, Window
 
 from operations_pie_menu.operations import merge_to_black as m2b
 from operations_pie_menu.operations import sanitize_group as sg
@@ -118,22 +118,23 @@ def test_sanitize_exception(monkeypatch, warnings):
 # ── merge_to_black ───────────────────────────────────────────────────────────
 
 
-def _fake_qimage(monkeypatch, data):
+def _fake_qimage(monkeypatch, data, report_fmt=5):
     class _FakeBits(bytearray):
         def setsize(self, n):
             pass
 
     class _FakeQImage:
         Format_ARGB32 = 5
+        _report_fmt = report_fmt
 
         def __init__(self, payload, width, height, bpr, fmt):
-            self._fmt = fmt
             self._data = _FakeBits(payload)
 
         def format(self):
-            return 5
+            return self._report_fmt
 
         def convertToFormat(self, fmt):
+            self._report_fmt = fmt
             return self
 
         def bits(self):
@@ -265,3 +266,136 @@ def test_merge_black_flatten_extra_checks():
     assert m2b._flatten_extra_checks(None, inside) == (True, "")
     del grp
     assert m2b._flatten_extra_checks(None, Node("loose", "paintlayer"))[0] is False
+
+
+def test_merge_black_active_layer_inside_group(monkeypatch, warnings, infos):
+    monkeypatch.setattr(m2b, "is_protected_layer", _no_protected)
+    monkeypatch.setattr(m2b, "is_u8_rgba", lambda doc: True)
+    _fake_qimage(monkeypatch, bytes(range(16)))
+
+    ink = Node("ink", "paintlayer", empty=False)
+    group = Group("g", [ink])
+    doc = Doc(node=ink, root=group)
+    app = App(doc)
+    monkeypatch.setattr(m2b, "Krita", type("_AppStub", (), {"instance": staticmethod(lambda: app)}))
+    m2b.execute_merge_to_black()
+
+    merged = [c for c in group._children if c is not ink]
+    assert merged and merged[0].name() == "1"
+    assert warnings == []
+    assert infos == []
+
+
+def test_merge_black_restores_locked_paint_visibility(monkeypatch, warnings):
+    monkeypatch.setattr(m2b, "is_protected_layer", _no_protected)
+    monkeypatch.setattr(m2b, "is_u8_rgba", lambda doc: True)
+    _fake_qimage(monkeypatch, bytes(range(16)))
+
+    locked_ink = Node("locked", "paintlayer", empty=False, locked=True)
+    ink = Node("ink", "paintlayer", empty=False)
+    group = Group("g", [locked_ink, ink])
+    doc = Doc(node=group)
+    doc._root = group
+    app = App(doc)
+    monkeypatch.setattr(m2b, "Krita", type("_AppStub", (), {"instance": staticmethod(lambda: app)}))
+    m2b.execute_merge_to_black()
+
+    assert locked_ink in group._children
+    assert locked_ink._visible is True
+    assert warnings == []
+
+
+def test_merge_black_convert_format(monkeypatch):
+    monkeypatch.setattr(m2b, "is_protected_layer", _no_protected)
+    monkeypatch.setattr(m2b, "is_u8_rgba", lambda doc: True)
+    _fake_qimage(monkeypatch, bytes(range(16)), report_fmt=6)
+
+    ink = Node("ink", "paintlayer", empty=False)
+    group = Group("g", [ink])
+    doc = Doc(node=group)
+    app = App(doc)
+    monkeypatch.setattr(m2b, "Krita", type("_AppStub", (), {"instance": staticmethod(lambda: app)}))
+    m2b.execute_merge_to_black()
+
+    merged = [c for c in group._children if c is not ink]
+    assert merged and merged[0].name() == "1"
+
+
+def test_merge_black_name_collision_without_white(monkeypatch):
+    monkeypatch.setattr(m2b, "is_protected_layer", _no_protected)
+    monkeypatch.setattr(m2b, "is_u8_rgba", lambda doc: True)
+    _fake_qimage(monkeypatch, bytes(range(16)))
+
+    kept1 = Node("1", "paintlayer", empty=False, locked=True)
+    kept_black = Node("1_black", "paintlayer", empty=False, locked=True)
+    ink = Node("ink", "paintlayer", empty=False)
+    group = Group("g", [kept1, kept_black, ink])
+    doc = Doc(node=group)
+    doc._root = group
+    app = App(doc)
+    monkeypatch.setattr(m2b, "Krita", type("_AppStub", (), {"instance": staticmethod(lambda: app)}))
+    m2b.execute_merge_to_black()
+
+    merged = [c for c in group._children if c not in (kept1, kept_black)]
+    assert merged and merged[0].name() == "1_black_1"
+
+
+def test_merge_black_activates_tool_and_brush(monkeypatch):
+    monkeypatch.setattr(m2b, "is_protected_layer", _no_protected)
+    monkeypatch.setattr(m2b, "is_u8_rgba", lambda doc: True)
+    _fake_qimage(monkeypatch, bytes(range(16)))
+
+    ink = Node("ink", "paintlayer", empty=False)
+    group = Group("g", [ink])
+    doc = Doc(node=group)
+    doc._root = group
+
+    erase = Action(checked=True)
+    reset = Action()
+    brush = Action()
+    view = View()
+    app = App(
+        doc,
+        window=Window(view),
+        actions={"erase_action": erase, "reset_fg_bg": reset},
+    )
+    monkeypatch.setattr(m2b, "Krita", type("_AppStub", (), {"instance": staticmethod(lambda: app)}))
+    monkeypatch.setattr(m2b, "resolve_action", lambda app, ids: brush)
+    monkeypatch.setattr(m2b, "set_foreground_black", lambda doc, view: None)
+    monkeypatch.setattr(m2b, "find_brush_preset", lambda app, name: "preset-0std")
+    logged = []
+    monkeypatch.setattr(m2b, "log_info", lambda *a: logged.append(a))
+
+    m2b.execute_merge_to_black()
+
+    assert erase.triggered == 1
+    assert reset.triggered == 1
+    assert brush.triggered == 1
+    assert view.resources == ["preset-0std"]
+    assert logged
+
+
+def test_merge_black_activate_resource_exception(monkeypatch):
+    monkeypatch.setattr(m2b, "is_protected_layer", _no_protected)
+    monkeypatch.setattr(m2b, "is_u8_rgba", lambda doc: True)
+    _fake_qimage(monkeypatch, bytes(range(16)))
+
+    ink = Node("ink", "paintlayer", empty=False)
+    group = Group("g", [ink])
+    doc = Doc(node=group)
+    doc._root = group
+
+    class _BoomView(View):
+        def activateResource(self, preset):
+            raise RuntimeError("preset missing")
+
+    app = App(doc, window=Window(_BoomView()))
+    monkeypatch.setattr(m2b, "Krita", type("_AppStub", (), {"instance": staticmethod(lambda: app)}))
+    monkeypatch.setattr(m2b, "resolve_action", lambda app, ids: None)
+    monkeypatch.setattr(m2b, "find_brush_preset", lambda app, name: "preset-0std")
+    warnings_log = []
+    monkeypatch.setattr(m2b, "log_warning", lambda *a: warnings_log.append(a))
+
+    m2b.execute_merge_to_black()
+
+    assert any("preset" in str(a[1]) for a in warnings_log)
