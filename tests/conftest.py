@@ -148,7 +148,7 @@ def _install_pyqt5_stubs():
     )
     _register(
         "PyQt5.QtGui",
-        ["QBrush", "QColor", "QCursor", "QPainter", "QPen", "QImage"],
+        ["QBrush", "QColor", "QCursor", "QPainter", "QPainterPath", "QPen", "QImage"],
     )
     _register(
         "PyQt5.QtWidgets",
@@ -157,6 +157,7 @@ def _install_pyqt5_stubs():
             "QCheckBox",
             "QComboBox",
             "QDialog",
+            "QDockWidget",
             "QGridLayout",
             "QGraphicsOpacityEffect",
             "QHBoxLayout",
