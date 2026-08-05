@@ -66,3 +66,13 @@ def test_rotation_failure_swallowed(monkeypatch, tmp_path):
     monkeypatch.setattr(logger, "MAX_LOG_BYTES", 10)
     os.makedirs(str(target) + ".old", exist_ok=True)
     logger.log_info("m", "must not crash")
+
+
+def test_write_error_swallowed(monkeypatch, tmp_path):
+    monkeypatch.setattr(logger, "LOG_FILE_PATH", str(tmp_path / "x.log"))
+
+    def boom(*args, **kwargs):
+        raise OSError("no space left")
+
+    monkeypatch.setattr(logger.os, "makedirs", boom)
+    logger.log_info("m", "must not crash")

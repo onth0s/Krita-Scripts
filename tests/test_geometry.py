@@ -94,3 +94,7 @@ def test_just_inside_deadzone_is_none():
     dx = math.cos(math.radians(45)) * (DEADZONE - 0.1)
     dy = math.sin(math.radians(45)) * (DEADZONE - 0.1)
     assert direction_from_vector(dx, dy, DEADZONE) is None
+
+
+def test_nan_input_falls_through_to_none():
+    assert direction_from_vector(math.nan, 0.0, DEADZONE) is None

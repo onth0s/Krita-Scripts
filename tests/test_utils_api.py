@@ -88,6 +88,16 @@ def test_create_incremental_layer_returns_none_when_no_context():
     assert utils.create_incremental_layer(_FakeDoc()) is None
 
 
+def test_create_incremental_layer_falls_back_to_root_node():
+    doc = _FakeDoc()
+    ref = _FakeNode("sketch_3")  # no parent -> parentNode() returns None
+    created = utils.create_incremental_layer(doc, ref)
+
+    assert created.name() == "4"
+    assert doc.active_set == [created]
+    assert doc.refreshed == 1
+
+
 def test_resolve_action_finds_first_match():
     class _App:
         def action(self, act_id):
@@ -139,6 +149,15 @@ def test_find_brush_preset_substring_and_fallback():
     app = _App(["Basic-5 Opacity", "My STD DRW Brush"])
     assert utils.find_brush_preset(app, "Basic-5 Opacity") == "obj-Basic-5 Opacity"
     assert utils.find_brush_preset(app, "0 STD DRW") == "obj-My STD DRW Brush"
+
+
+def test_find_brush_preset_substring_match():
+    class _App:
+        def resources(self, kind):
+            return {"brush 0 std drw v2": "obj"}
+
+    # exact match misses; target "0 std drw" is a substring of the preset name
+    assert utils.find_brush_preset(_App(), "0 STD DRW") == "obj"
 
 
 def test_find_brush_preset_none_when_missing():

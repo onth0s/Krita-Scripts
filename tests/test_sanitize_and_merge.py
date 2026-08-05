@@ -68,6 +68,25 @@ def test_sanitize_validate(monkeypatch):
     del grp
 
 
+def test_sanitize_active_layer_inside_group(monkeypatch):
+    monkeypatch.setattr(sg, "is_protected_layer", _no_protected)
+    monkeypatch.setattr(sg, "is_empty_paint_layer", lambda node: node._empty)
+
+    ink = Node("ink", "paintlayer", empty=False)
+    group = Group("g", [ink])
+    doc = Doc(node=ink, root=group)
+    app = App(doc)
+    monkeypatch.setattr(sg, "Krita", type("_AppStub", (), {"instance": staticmethod(lambda: app)}))
+    logged = []
+    monkeypatch.setattr(sg, "log_info", lambda *a: logged.append(a))
+
+    sg.execute_sanitize_group()
+
+    assert logged
+    assert len(doc.created) == 1
+    assert doc.created[0]._parent is group
+
+
 def test_sanitize_full_flow(monkeypatch, warnings):
     monkeypatch.setattr(sg, "is_protected_layer", _no_protected)
     monkeypatch.setattr(sg, "is_empty_paint_layer", lambda node: node._empty)

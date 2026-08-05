@@ -198,6 +198,66 @@ def test_luminosity_overlay_pixel_exception(wire):
     assert wire["error"]
 
 
+def test_luminosity_overlay_gray_pixel_non4_bytes(wire, monkeypatch):
+    class _Sample3(Node):
+        def pixelData(self, x, y, w, h):
+            return b"\x80\x80\x80"
+
+    class _SampleDoc(Doc):
+        def createNode(self, name, ntype):
+            n = _Sample3(name, ntype)
+            self.created.append(n)
+            return n
+
+    active = Node("ink", empty=False)
+    doc = _SampleDoc(active)
+    monkeypatch.setattr(rs, "resolve_action", lambda app, ids: None)
+
+    rs.apply_luminosity_overlay(doc, App(doc), active, None)
+
+    temp = doc.created[0]
+    assert temp._pixel is not None
+    assert temp._pixel[0].startswith(b"\x80\x80\x80")
+    assert len(temp._pixel[0]) == 3 * 4 * 4
+
+
+def test_luminosity_overlay_inherit_alpha_error(wire, monkeypatch):
+    class _BoomAlpha(Node):
+        def setInheritAlpha(self, v):
+            raise RuntimeError("inherit fail")
+
+    class _BoomDoc(Doc):
+        def createNode(self, name, ntype):
+            n = _BoomAlpha(name, ntype)
+            self.created.append(n)
+            return n
+
+    active = Node("ink", empty=False)
+    doc = _BoomDoc(active)
+    monkeypatch.setattr(rs, "resolve_action", lambda app, ids: None)
+
+    rs.apply_luminosity_overlay(doc, App(doc), active, None)
+
+    assert any("Inherit Alpha" in str(w[1]) for w in wire["warning"])
+
+
+def test_luminosity_overlay_view_set_node_error_swallowed(wire, monkeypatch):
+    class _BoomView(View):
+        def setActiveNode(self, node):
+            raise RuntimeError("view dead")
+
+    active = Node("ink", empty=False)
+    doc = Doc(active)
+    merge = Action()
+    actions = {"layer_merge_down": merge}
+    monkeypatch.setattr(rs, "resolve_action", make_resolver(actions))
+
+    rs.apply_luminosity_overlay(doc, App(doc, window=Window(_BoomView())), active, _BoomView())
+
+    assert merge.triggered == 1
+    assert not wire["error"], "view.setActiveNode failure must not abort overlay"
+
+
 # ── execute_refine_sketch ────────────────────────────────────────────────────
 
 
@@ -228,11 +288,11 @@ def test_refine_empty_layer(monkeypatch, warnings, wire):
     assert warnings and "empty" in str(warnings[0])
 
 
-def _run_full_refine(monkeypatch, duplicate_reflay=False):
-    active = Node("ink", empty=False)
+def _run_full_refine(monkeypatch, duplicate_reflay=False, active_node=None, view=None):
+    active = active_node if active_node is not None else Node("ink", empty=False)
     parent = Group("parent", [active, Node("WHITE", locked=True)])
     doc = Doc(active, root=parent)
-    view = View()
+    view = view or View()
     reset = Action()
     actions = {
         "reset_fg_bg": reset,
@@ -263,6 +323,7 @@ def _run_full_refine(monkeypatch, duplicate_reflay=False):
     )
     logs = []
     monkeypatch.setattr(rs, "log_info", lambda *a: logs.append(a))
+    monkeypatch.setattr(rs, "log_warning", lambda *a: wire.setdefault("warn", []).append(a))
 
     rs.execute_refine_sketch(duplicate_reflay=duplicate_reflay)
 
@@ -289,3 +350,27 @@ def test_refine_full_flow_with_duplicate_reflay(monkeypatch):
     )
     assert len(doc.active) > 1
     assert doc.refreshed >= 2
+
+
+def test_refine_alpha_lock_error_logs_warning(monkeypatch):
+    class _BoomAlpha(Node):
+        def setAlphaLocked(self, v):
+            raise RuntimeError("alpha lock fail")
+
+    doc, active, parent, view, reset, new_layer, preset, logs, wire = _run_full_refine(
+        monkeypatch, active_node=_BoomAlpha("ink", empty=False)
+    )
+    assert any("alpha locked" in str(w[1]) for w in wire["warn"])
+    assert logs
+
+
+def test_refine_brush_activation_error_logs_warning(monkeypatch):
+    class _BoomView(View):
+        def activateResource(self, preset):
+            raise RuntimeError("activate fail")
+
+    doc, active, parent, view, reset, new_layer, preset, logs, wire = _run_full_refine(
+        monkeypatch, view=_BoomView()
+    )
+    assert any("brush preset" in str(w[1]) for w in wire["warn"])
+    assert logs

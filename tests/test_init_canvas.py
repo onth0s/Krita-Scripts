@@ -172,3 +172,61 @@ def test_init_brush_preset_activation_error(monkeypatch):
 
     assert logged["warning"]
     assert logged["info"]
+
+
+def test_init_base_layer_visibility_error_logs_warning(monkeypatch):
+    class _BoomVisible(Node):
+        def setVisible(self, v):
+            raise RuntimeError("setVisible fail")
+
+    ink = _BoomVisible("ink", locked=True)
+    doc, root = _base_doc([ink])
+    logged = _wire(monkeypatch, answer=YES)
+    app = App(doc)
+    monkeypatch.setattr(ic, "Krita", type("_S", (), {"instance": staticmethod(lambda: app)}))
+    monkeypatch.setattr(ic, "resolve_action", make_resolver({}))
+    monkeypatch.setattr(ic, "set_foreground_black", lambda d, v: None)
+    monkeypatch.setattr(ic, "find_brush_preset", lambda a, n: None)
+
+    ic.execute_init_canvas()
+
+    assert any("visibility" in str(w[1]) for w in logged["warning"])
+    assert logged["info"]
+
+
+def test_init_base_fill_error_logs_error(monkeypatch):
+    class _BoomPixel(Node):
+        def pixelData(self, x, y, w, h):
+            raise RuntimeError("read fail")
+
+    white = _BoomPixel("WHITE", locked=True)
+    doc, root = _base_doc([white])
+    logged = _wire(monkeypatch)
+    app = App(doc)
+    monkeypatch.setattr(ic, "Krita", type("_S", (), {"instance": staticmethod(lambda: app)}))
+    monkeypatch.setattr(ic, "resolve_action", make_resolver({}))
+    monkeypatch.setattr(ic, "set_foreground_black", lambda d, v: None)
+    monkeypatch.setattr(ic, "find_brush_preset", lambda a, n: None)
+
+    ic.execute_init_canvas()
+
+    assert logged["error"]
+    assert logged["info"]
+
+
+def test_init_turns_off_eraser_and_triggers_brush(monkeypatch):
+    erase = Action(checked=True)
+    brush = Action()
+    doc, root = _base_doc([Node("WHITE", locked=True)])
+    logged = _wire(monkeypatch)
+    app = App(doc, actions={"erase_action": erase})
+    monkeypatch.setattr(ic, "Krita", type("_S", (), {"instance": staticmethod(lambda: app)}))
+    monkeypatch.setattr(ic, "resolve_action", lambda app, ids: brush)
+    monkeypatch.setattr(ic, "set_foreground_black", lambda d, v: None)
+    monkeypatch.setattr(ic, "find_brush_preset", lambda a, n: None)
+
+    ic.execute_init_canvas()
+
+    assert erase.triggered == 1
+    assert brush.triggered == 1
+    assert logged["info"]

@@ -39,6 +39,43 @@ def test_base_dialog_build_sector_editors_is_abstract(tmp_path):
         BasePieConfigDialog(str(tmp_path / "c.json"), title="x")
 
 
+def test_base_dialog_collect_config_is_abstract(tmp_path):
+    class _Partial(BasePieConfigDialog):
+        def build_sector_editors(self, grid):
+            pass
+
+    dlg = _Partial(str(tmp_path / "c.json"), title="x")
+    with pytest.raises(NotImplementedError):
+        dlg.collect_config()
+
+
+def test_sector_dialog_uses_find_data_for_known_action(tmp_path, monkeypatch):
+    import filters_pie_menu.config_dialog as fcd
+
+    cfg = tmp_path / "config.json"
+    save_config(str(cfg), {"N": {"label": "HSV", "action_id": "krita_filter_hsvadjustment"}})
+
+    indices = []
+
+    class _FakeCombo:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def addItem(self, label, data):
+            pass
+
+        def findData(self, data):
+            return 3 if data == "krita_filter_hsvadjustment" else -1
+
+        def setCurrentIndex(self, index):
+            indices.append(index)
+
+    monkeypatch.setattr(fcd, "QComboBox", _FakeCombo)
+    SectorConfigDialog(str(cfg))
+
+    assert 3 in indices, "known action_id must set the combo index via findData"
+
+
 def test_sector_config_dialog_loads_existing_config(tmp_path):
     cfg = tmp_path / "config.json"
     save_config(str(cfg), {"N": {"label": "HSV", "action_id": "krita_filter_hsvadjustment"}})

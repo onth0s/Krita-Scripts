@@ -113,3 +113,15 @@ def test_save_config_creates_parent_dirs(tmp_path):
     target = tmp_path / "nested" / "deep" / "config.json"
     assert utils.save_config(str(target), {"k": "v"}) is True
     assert json.loads(target.read_text(encoding="utf-8")) == {"k": "v"}
+
+
+def test_load_config_without_defaults_returns_empty(tmp_path):
+    assert utils.load_config(str(tmp_path / "nope.json")) == {}
+
+
+def test_save_config_failure_returns_false(monkeypatch, tmp_path):
+    def boom(*args, **kwargs):
+        raise OSError("no space left")
+
+    monkeypatch.setattr(utils.os, "makedirs", boom)
+    assert utils.save_config(str(tmp_path / "x.json"), {"k": "v"}) is False
