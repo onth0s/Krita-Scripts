@@ -236,7 +236,7 @@ def execute_refine_sketch(duplicate_reflay: bool = False) -> None:
     counter = 1
     for child in parent.childNodes():
         if is_protected_layer(child):
-            continue  # leave protected layers alone (see AGENTS.md ┬º8.3)
+            continue  # leave protected layers alone (see AGENTS.md §8.3)
         child.setName(str(counter))
         counter += 1
     doc.setActiveNode(new_layer)
