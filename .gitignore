@@ -45,3 +45,6 @@ Desktop.ini
 # Temporary & backup files
 *.bak
 *.tmp
+
+# Runtime config (per-user sector bindings / toggles); see config.example.json
+config.json
