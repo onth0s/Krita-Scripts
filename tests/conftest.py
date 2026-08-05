@@ -51,6 +51,35 @@ class _Stub:
     def __rand__(self, other):
         return self
 
+    # Qt geometry math mixes enum-typed values with ints (e.g. cursor pos math);
+    # allow any arithmetic so stub-backed code paths run through to the asserts.
+    def __add__(self, other):
+        return self
+
+    def __radd__(self, other):
+        return self
+
+    def __sub__(self, other):
+        return self
+
+    def __rsub__(self, other):
+        return self
+
+    def __mul__(self, other):
+        return self
+
+    def __rmul__(self, other):
+        return self
+
+    def __truediv__(self, other):
+        return self
+
+    def __rtruediv__(self, other):
+        return self
+
+    def __neg__(self):
+        return self
+
     def __int__(self):
         return 0
 

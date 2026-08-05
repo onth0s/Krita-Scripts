@@ -348,6 +348,11 @@ Manual Krita smoke (headless impossible — CI cannot cover it): Space filters g
 - `tests/test_pie_widget.py` — `SECTOR_CODES` canonical order, `SECTOR_NAMES` derivation, `_execute_sector` enable/disable/False-suppression toast behavior, validator state polling.
 - `tests/test_operations_registry.py` — `OP_HANDLERS` registry keys, `_unassigned_validator`, `build_pie_config` round-trip, refine-callback condition wiring, stub callbacks toasting instead of `QMessageBox`.
 - `tests/test_imports.py` — every plugin module imports cleanly headlessly (catches import-time breakage, e.g. extension registrations in `__init__.py`, that `compileall`/`mypy` would miss).
+- `tests/test_utils_api.py` — `create_incremental_layer`, `resolve_action`, `find_brush_preset`, `set_foreground_black`, `make_doc_active_validator` (no-doc / no-layer / extra-checks states) against fake node/doc/app objects.
+- `tests/test_filters_pie_menu.py` — prefixed config IDs verified against the `FILTER_OPTIONS` source of truth; `trigger_action` success / missing-action `False` / group-block / `FILTER_OPTIONS` synonym fallback / **no `app.actions()` scan**; `build_pie_config` round-trip.
+- `tests/test_conditions_pie_menu.py` — `toggle_condition` flip+persist, `build_pie_config` toggle_states wiring (6 stub sectors disabled, NE/W live), toggle callbacks, stub toasts.
+- `tests/test_pie_interrupt.py` — AGENTS.md §9 contract: interrupt uses opacity+offscreen move (never `hide()`), is idempotent, `F11`/`Esc` interrupts on keypress, auto-repeat ignored, interrupted key-release only closes on `trigger_keys`, right-click / left-click-in-deadzone interrupt, `show_at_cursor` restores opacity+flags, deadzone/sector mouse selection with cursor origin fallback.
+- `tests/test_toast_supersede.py` — `show_toast` supersede cancels the previous toast's fade timer (`stop`) before `close()`, double-toast under `duration_ms` doesn't crash, no-parent geometry path.
 
 > **Rule for new code:** keep pure logic (geometry, config, name derivation, validators) free of Krita/Qt calls so it stays unit-testable; route side-effecting bits behind small functions the tests can monkeypatch.
 
