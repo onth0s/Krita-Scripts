@@ -9,7 +9,7 @@
   },
   "E": {
     "label": "Stub East",
-    "action_id": "op_stub_east"
+    "action_id": "op_placeholder_east"
   },
   "SE": {
     "label": "B&W Preview",
@@ -25,7 +25,7 @@
   },
   "W": {
     "label": "Fit Layer to Canvas",
-    "action_id": "op_stub_west"
+    "action_id": "op_fit_layer"
   },
   "NW": {
     "label": "Duplicate",

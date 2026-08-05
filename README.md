@@ -95,6 +95,12 @@ foreach ($p in $plugins) {
 
 > **Note:** Edits made in this workspace sync live to Krita instantly!
 
+> **Runtime configs (`config.json`) are untracked and generated locally.** The
+> tracked `config.example.json` files are the templates; when sector action IDs
+> change in a release, re-open each pie's **Configure** dialog and save once to
+> regenerate your runtime `config.json` (otherwise stale IDs silently fall back
+> to stub sectors).
+
 ---
 
 ## 🚀 How to Enable in Krita

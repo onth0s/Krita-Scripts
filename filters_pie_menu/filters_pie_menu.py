@@ -6,7 +6,7 @@ from PyQt5.QtWidgets import QMessageBox
 
 from krita_pie_menu import BasePieMenuExtension, make_doc_active_validator
 
-from .config_dialog import SectorConfigDialog
+from .config_dialog import FILTER_OPTIONS, SectorConfigDialog
 
 
 def _filter_extra_checks(doc: Any, node: Any) -> Tuple[bool, str]:
@@ -18,14 +18,14 @@ def _filter_extra_checks(doc: Any, node: Any) -> Tuple[bool, str]:
 validate_filter_context = make_doc_active_validator(_filter_extra_checks)
 
 DEFAULT_FILTERS_CONFIG = {
-    "N": {"label": "HSV Adjustment", "action_id": "hsv_adjustment"},
-    "NE": {"label": "Color Curves", "action_id": "color_curves"},
-    "E": {"label": "Color Balance", "action_id": "color_balance"},
-    "SE": {"label": "Slope, Offset, Power", "action_id": "slope_offset_power"},
-    "S": {"label": "Desaturate", "action_id": "desaturate"},
-    "SW": {"label": "Auto Contrast", "action_id": "auto_contrast"},
-    "W": {"label": "Levels", "action_id": "levels"},
-    "NW": {"label": "Invert", "action_id": "invert"},
+    "N": {"label": "HSV Adjustment", "action_id": "krita_filter_hsvadjustment"},
+    "NE": {"label": "Color Curves", "action_id": "krita_filter_perchannel"},
+    "E": {"label": "Color Balance", "action_id": "krita_filter_colorbalance"},
+    "SE": {"label": "Slope, Offset, Power", "action_id": "krita_filter_slope_offset_power"},
+    "S": {"label": "Desaturate", "action_id": "krita_filter_desaturate"},
+    "SW": {"label": "Auto Contrast", "action_id": "krita_filter_autocontrast"},
+    "W": {"label": "Levels", "action_id": "krita_filter_levels"},
+    "NW": {"label": "Invert", "action_id": "krita_filter_invert"},
 }
 
 
@@ -83,8 +83,15 @@ class FiltersPieMenuExtension(BasePieMenuExtension):
             return False
 
         raw_id = action_id.replace("krita_filter_", "")
-        candidates = [
-            action_id,
+
+        # Canonical action IDs from FILTER_OPTIONS (config_dialog.py) are the
+        # source of truth; probe related spellings before the generic fallbacks.
+        candidates = [action_id]
+        for _, known_id in FILTER_OPTIONS:
+            known_raw = known_id.replace("krita_filter_", "")
+            if raw_id and (raw_id in known_raw or known_raw in raw_id):
+                candidates.append(known_id)
+        candidates += [
             f"krita_filter_{raw_id}",
             f"krita_filter_{raw_id.replace('_', '')}",
             "krita_filter_perchannel" if "curve" in fallback_text.lower() else "",
@@ -105,17 +112,5 @@ class FiltersPieMenuExtension(BasePieMenuExtension):
             action = app.action(cid)
             if action:
                 action.trigger()
-                return True
-
-        # Fallback search across all registered Krita actions
-        search_target = fallback_text.replace(".", "").replace("&", "").strip().lower()
-        for act in app.actions():
-            act_text = act.text().replace("&", "").replace(".", "").strip().lower()
-            act_id = act.objectName().lower()
-            if search_target and (search_target in act_text or act_text in search_target):
-                act.trigger()
-                return True
-            if raw_id and raw_id in act_id:
-                act.trigger()
                 return True
         return False

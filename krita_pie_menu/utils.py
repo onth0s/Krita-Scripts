@@ -30,21 +30,55 @@ def is_u8_rgba(doc: Any) -> bool:
     return doc.colorModel() == "RGBA" and doc.colorDepth() == "U8"
 
 
-def read_condition_flag(key: str, default: bool = False) -> bool:
+def _resolve_repo_root() -> str:
+    return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+CONDITIONS_CONFIG_PATH: str = os.environ.get(
+    "KRITA_CONDITIONS_CONFIG",
+    os.path.join(_resolve_repo_root(), "conditions_pie_menu", "config.json"),
+)
+
+
+def get_condition_flag(key: str, default: bool = False) -> bool:
     """
     Safely queries a global condition flag from conditions_pie_menu/config.json.
-    Provides robust cross-plugin condition reading with fallback default.
+
+    This is a deliberate cross-plugin coupling: operations read toggles that are
+    written by the conditions pie menu. If conditions_pie_menu is renamed or
+    uninstalled, or the file is missing, the value silently falls back to
+    `default`. Override the resolved path with the KRITA_CONDITIONS_CONFIG
+    environment variable (read once at import time), or reassign the
+    CONDITIONS_CONFIG_PATH module constant at runtime.
     """
-    pykrita_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    cond_cfg_path = os.path.join(pykrita_dir, "conditions_pie_menu", "config.json")
-    cond_cfg = load_config(cond_cfg_path, {})
+    cond_cfg = load_config(CONDITIONS_CONFIG_PATH, {})
     return bool(cond_cfg.get(key, default))
 
+
+def read_condition_flag(key: str, default: bool = False) -> bool:
+    """Backwards-compatible alias for :func:`get_condition_flag`."""
+    return get_condition_flag(key, default)
+
+
+def _deep_merge(base: Dict[str, Any], overrides: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Recursively merges `overrides` into `base`, returning a new dict.
+    Values in `overrides` always win; nested dicts are merged recursively.
+    """
+    merged = dict(base)
+    for key, value in overrides.items():
+        if isinstance(value, dict) and isinstance(merged.get(key), dict):
+            merged[key] = _deep_merge(merged[key], value)
+        else:
+            merged[key] = value
+    return merged
 
 
 def load_config(config_path: str, defaults: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     """
-    Safely load a JSON configuration file. Returns `defaults` (or empty dict) on failure.
+    Safely load a JSON configuration file, deep-merging any keys missing from
+    `defaults` (values present in the file always win). Returns `defaults`
+    (or an empty dict) when the file is absent or unreadable.
     """
     if defaults is None:
         defaults = {}
@@ -53,7 +87,7 @@ def load_config(config_path: str, defaults: Optional[Dict[str, Any]] = None) -> 
             with open(config_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
                 if isinstance(data, dict):
-                    return data
+                    return _deep_merge(defaults, data)
         except Exception:
             pass
     return dict(defaults)

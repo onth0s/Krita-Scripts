@@ -1,9 +1,9 @@
 import os
+from typing import Tuple
 
 from krita import Krita
-from PyQt5.QtWidgets import QMessageBox
 
-from krita_pie_menu import BasePieMenuExtension, read_condition_flag
+from krita_pie_menu import BasePieMenuExtension, ToastNotification, read_condition_flag
 
 from .config_dialog import OperationsConfigDialog
 from .operations import (
@@ -33,6 +33,11 @@ DEFAULT_OPERATIONS_CONFIG = {
     "W": {"label": "Fit Layer to Canvas", "action_id": "op_fit_layer"},
     "NW": {"label": "Duplicate", "action_id": "op_duplicate_layer"},
 }
+
+
+def _unassigned_validator() -> Tuple[bool, str]:
+    """Validator for sectors that have no operation bound (greyed out, like conditions stubs)."""
+    return False, "Sector not configured."
 
 
 class OperationsPieMenuExtension(BasePieMenuExtension):
@@ -66,6 +71,7 @@ class OperationsPieMenuExtension(BasePieMenuExtension):
 
         validators["N"] = validate_refine_sketch
         validators["NE"] = validate_sanitize_group
+        validators["E"] = _unassigned_validator
         validators["SE"] = validate_bw_preview
         validators["S"] = validate_init_canvas
         validators["SW"] = validate_merge_to_black
@@ -108,7 +114,7 @@ class OperationsPieMenuExtension(BasePieMenuExtension):
             if act:
                 act.trigger()
                 return
-        QMessageBox.information(None, "Operations Pie Menu", f"Stub clicked: [{code}] {label}")
+        ToastNotification.show_toast(f"Stub [{code}] {label}", toast_type="info")
 
     def open_config_dialog(self):
         dlg = OperationsConfigDialog(self.config_path, on_save_callback=None)

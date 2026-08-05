@@ -4,9 +4,11 @@ from .logger import log_error, log_info, log_warning
 from .pie_widget import PieMenuWidget
 from .toast_notification import ToastNotification
 from .utils import (
+    CONDITIONS_CONFIG_PATH,
     PROTECTED_NAMES,
     create_incremental_layer,
     find_brush_preset,
+    get_condition_flag,
     get_incremental_layer_name,
     is_protected_layer,
     is_u8_rgba,
@@ -25,8 +27,10 @@ __all__ = [
     "BasePieConfigDialog",
     "SECTOR_NAMES",
     "PROTECTED_NAMES",
+    "CONDITIONS_CONFIG_PATH",
     "is_protected_layer",
     "is_u8_rgba",
+    "get_condition_flag",
     "read_condition_flag",
     "log_info",
     "log_warning",
