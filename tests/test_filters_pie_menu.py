@@ -130,3 +130,53 @@ def test_build_pie_config_full_sectors(monkeypatch, tmp_path):
     assert set(items_meta) == set(SECTOR_CODES)
     assert set(validators) == set(SECTOR_CODES)
     assert set(toggle_states) == set()
+
+
+def test_create_actions_registers_both_actions(tmp_path, monkeypatch):
+    class _Signal:
+        def __init__(self):
+            self.cb = None
+
+        def connect(self, cb):
+            self.cb = cb
+
+    class _Action:
+        def __init__(self):
+            self.triggered = _Signal()
+
+    created = []
+
+    class _Win:
+        def createAction(self, aid, text, category):
+            created.append((aid, text, category))
+            return _Action()
+
+    ext = FiltersPieMenuExtension(parent=None)
+    monkeypatch.setattr(ext, "config_path", str(tmp_path / "config.json"))
+    ext.createActions(_Win())
+
+    assert created == [
+        ("trigger_filters_pie_menu", "Filters Pie Menu", "tools/scripts"),
+        ("configure_filters_pie_menu", "Configure Filters Pie Menu", "tools/scripts"),
+    ]
+
+
+def test_open_config_dialog_constructs_and_executes(tmp_path, monkeypatch):
+    import filters_pie_menu.filters_pie_menu as fmod
+
+    ext = FiltersPieMenuExtension(parent=None)
+    monkeypatch.setattr(ext, "config_path", str(tmp_path / "config.json"))
+    executed = []
+
+    class _Dlg:
+        def __init__(self, path, on_save_callback=None):
+            self.path = path
+
+        def exec_(self):
+            executed.append(self.path)
+
+    monkeypatch.setattr(fmod, "SectorConfigDialog", _Dlg)
+    ext.open_config_dialog()
+
+    assert len(executed) == 1
+    assert executed[0].endswith("config.json")

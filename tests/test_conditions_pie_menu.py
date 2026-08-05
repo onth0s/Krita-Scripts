@@ -81,3 +81,51 @@ def test_stub_callbacks_toast_not_crash(tmp_path, monkeypatch):
     callbacks, _, _, _ = ext.build_pie_config()
     callbacks["N"]()
     assert any("stub" in msg.lower() for msg in toasts)
+
+
+def test_create_actions_registers_both_actions(tmp_path, monkeypatch):
+    class _Signal:
+        def __init__(self):
+            self.cb = None
+
+        def connect(self, cb):
+            self.cb = cb
+
+    class _Action:
+        def __init__(self):
+            self.triggered = _Signal()
+
+    created = []
+
+    class _Win:
+        def createAction(self, aid, text, category):
+            created.append((aid, text, category))
+            return _Action()
+
+    ext = _make_ext(tmp_path, monkeypatch)
+    ext.createActions(_Win())
+
+    assert created == [
+        ("trigger_conditions_pie_menu", "Conditions Pie Menu", "tools/scripts"),
+        ("configure_conditions_pie_menu", "Configure Conditions Pie Menu", "tools/scripts"),
+    ]
+
+
+def test_open_config_dialog_constructs_and_executes(tmp_path, monkeypatch):
+    import conditions_pie_menu.conditions_pie_menu as cmod
+
+    ext = _make_ext(tmp_path, monkeypatch)
+    executed = []
+
+    class _Dlg:
+        def __init__(self, path, on_save_callback=None):
+            self.path = path
+
+        def exec_(self):
+            executed.append(self.path)
+
+    monkeypatch.setattr(cmod, "ConditionsConfigDialog", _Dlg)
+    ext.open_config_dialog()
+
+    assert len(executed) == 1
+    assert executed[0].endswith("config.json")
