@@ -1,5 +1,5 @@
 {
-  "duplicate_reflay": false,
+  "duplicate_reflay": true,
   "N": {
     "label": "Stub North",
     "action_id": "cond_stub_n"
@@ -32,5 +32,5 @@
     "label": "Stub North West",
     "action_id": "cond_stub_nw"
   },
-  "keep_aspect_ratio": false
+  "keep_aspect_ratio": true
 }
