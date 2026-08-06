@@ -140,7 +140,7 @@ All radial Pie Menu extensions (`filters_pie_menu`, `operations_pie_menu`, `cond
 
 **Cross-plugin condition flags:** `operations`/`fit_layer` read toggles written by `conditions` via `get_condition_flag(key, default)` (and its alias `read_condition_flag`). This is a deliberate coupling: the path resolves at import time to `<repo root>/conditions_pie_menu/config.json` and is overridable via the `KRITA_CONDITIONS_CONFIG` env var or by reassigning `CONDITIONS_CONFIG_PATH`. If `conditions` is renamed/uninstalled, lookups silently fall back to `default`.
 
-**Pixel-format guard:** `fit_layer` and `merge_to_black` build raw 4-bytes-per-pixel `QImage` buffers. They must call `is_u8_rgba(doc)` first and return early (with a warning toast) on any non-8-bit RGBA document — do not assume the pixel format.
+**Pixel-format guard:** `fit_layer` and `merge_to_black` build raw 4-bytes-per-pixel `QImage` buffers. They must call `is_u8_rgba(doc)` first and return early (with a warning dialog) on any non-8-bit RGBA document — do not assume the pixel format.
 
 **Protected-layer invariant:** `refine_sketch` renumbers sibling layers `1..N` after creating the new layer but **skips protected layers** (`WHITE`/`B&W`/`LINES`) exactly like `sanitize_group`/`merge_to_black`. Any future renumber/rename/purge loop must call `is_protected_layer()` before mutating.
 

@@ -6,6 +6,30 @@
 
 ---
 
+## 0. Execution Status — RATIFIED (2026-08-06)
+
+All five phases below were fully **executed** on `master` and are reflected in the
+current tree. The body of this document is retained verbatim as the historical
+audit/implementation plan; baseline figures (lines, modules, findings) describe
+the **pre-execution** state.
+
+| Phase | Commit | Gate |
+|-------|--------|------|
+| 1 | `ca39012` | green |
+| 2 | `760149e` | green |
+| 3 | `38f13b2` | green |
+| 4 | `0443cde` | green |
+| 5 | `2437a65` | green |
+
+Follow-up work (26 commits) extended the headless test suite to **311 tests /
+100% coverage (1,629 stmts)** and is captured in AGENTS.md §10.2. Current gate
+results (verified 2026-08-06): `ruff check .` = 0 findings · `compileall` = OK ·
+`mypy` = 0 errors (29 files) · `pytest` = 311 passed.
+
+See §9 for post-execution deviations from the plan's letter.
+
+---
+
 ## 1. Executive Summary
 
 The repository contains **5 plugins** (`filters`, `operations`, `conditions` pie menus,
@@ -36,6 +60,8 @@ tooling hygiene gaps. The plan below fixes these in 5 sequential phases.
 
 ## 2. Current Codebase Inventory
 
+> Figures reflect the pre-execution baseline; see §0 for the executed state.
+
 | Component | Modules | Lines | Status |
 |-----------|---------|-------|--------|
 | `krita_pie_menu/` (shared lib) | 7 `.py` | 1,016 | Stable; dead constants + coupling debt |
@@ -51,6 +77,9 @@ tooling hygiene gaps. The plan below fixes these in 5 sequential phases.
 ## 3. Audit Findings
 
 Severity: **H** = must fix, **M** = should fix, **L** = polish.
+
+> **Status:** All findings H1–H7, A1–A6, D1–D4, C1–C6 below were resolved by the
+> executed phases (see §0). Tables are retained as the audit record.
 
 ### 3.1 Data integrity & correctness
 
@@ -129,6 +158,8 @@ Each phase = **one commit**. Do not mix phases in a commit.
 
 ### Phase 1 — Pixel-Integrity & Protected-Layer Fixes
 
+> **Status: EXECUTED** — commit `ca39012`, gate green.
+
 **Goal:** Eliminate data-corruption paths and bring `refine_sketch` in line with the AGENTS.md §8.3 protected-layer invariant.
 
 1. **Add a pixel-format guard helper to `krita_pie_menu/utils.py`:**
@@ -169,6 +200,8 @@ Each phase = **one commit**. Do not mix phases in a commit.
 
 ### Phase 2 — Configuration & Cross-Plugin Decoupling
 
+> **Status: EXECUTED** — commit `760149e`, gate green.
+
 **Goal:** Make the conditions coupling explicit/overridable, add defaults deep-merge, and eliminate config convention drift.
 
 1. **Decouple conditions path (A1):** in `utils.py`, add
@@ -194,6 +227,8 @@ Each phase = **one commit**. Do not mix phases in a commit.
 ---
 
 ### Phase 3 — DRY & Dispatch Simplification
+
+> **Status: EXECUTED** — commit `38f13b2`, gate green.
 
 **Goal:** Kill the duplicate/dead code from §3.3 and replace the brittle operations dispatcher with a registry.
 
@@ -233,6 +268,8 @@ Each phase = **one commit**. Do not mix phases in a commit.
 
 ### Phase 4 — Type Safety, Logging, Docs Sync
 
+> **Status: EXECUTED** — commit `0443cde`, gate green.
+
 **Goal:** Close the type gaps, make the logger honor its contract, and sync AGENTS.md/README with reality.
 
 1. **Tooling config (C1):** set `mypy.python_version = "3.10"` and `ruff.target-version = "py310"` — correct for current Krita installs (5.0 embeds 3.8, 5.1 → 3.9, 5.2+ → 3.10); consider bumping `requires-python = ">=3.9"`.
@@ -258,6 +295,8 @@ Each phase = **one commit**. Do not mix phases in a commit.
 ---
 
 ### Phase 5 — Test Harness & CI Hygiene
+
+> **Status: EXECUTED** — commit `2437a65`, gate green.
 
 **Goal:** Add a repeatable, non-Krita test harness and wire it into CI so future refactors are verifiable.
 
@@ -311,6 +350,8 @@ Phase 5  Test Harness & CI Hygiene
 
 ## 7. Files Summary
 
+> All "Modified" / "Created" rows below were applied across the executed phases; see §0.
+
 ### Modified
 
 | File | Phases | Nature |
@@ -355,3 +396,30 @@ Phase 5  Test Harness & CI Hygiene
 - Replacing the Qt widget stack or migrating PyQt5 → PyQt6.
 - Changing the interrupt architecture (AGENTS.md §9) — verified correct; untouched.
 - Renaming plugins or changing the `.action`/`.desktop` deployment contract.
+
+---
+
+## 9. Post-Execution Log & Deviations (added 2026-08-06)
+
+### 9.1 Execution trail
+
+- **Phase 1** (`ca39012`) — pixel-integrity guards, protected-layer renumber skip, toast timer lifecycle.
+- **Phase 2** (`760149e`) — conditions path decoupling, deep-merge defaults, filter ID convention.
+- **Phase 3** (`38f13b2`) — SECTOR_CODES constants, `_execute_sector` dedup, operations registry.
+- **Phase 4** (`0443cde`) — type targets to py3.10, logger lock, mypy 0, docs sync.
+- **Phase 5** (`2437a65`) — ruff I001 baseline, headless pytest harness, CI workflow.
+- **Post-phase** (26 commits, `7dbd34f`…`3d1c956`) — coverage lifted to 100% (311 tests).
+
+### 9.2 Deviations from the plan's letter
+
+1. **U8-guard UX (Phase 1, items 2–3):** the plan specified `ToastNotification`;
+   `fit_layer`/`merge_to_black` instead use `log_warning` + `QMessageBox.warning`,
+   consistent with the other operation guards in the codebase. AGENTS.md §5 wording
+   ("warning toast") has been corrected to match.
+2. **Renumber loop (Phase 1, item 4):** the plan's `enumerate(..., start=1)` sketch
+   increments over protected layers too; the implementation uses a skip-only
+   `counter`, so non-protected siblings are numbered contiguously 1..N.
+3. **Filters example vs defaults (Phase 2, item 3):** both use prefixed
+   `krita_filter_*` IDs, but `config.example.json` assigns different filters to
+   E/SE/SW/W than `DEFAULT_FILTERS_CONFIG`; runtime configs are untracked and
+   regenerated on first save (see §0).
