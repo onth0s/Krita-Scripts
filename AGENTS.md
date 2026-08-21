@@ -167,6 +167,7 @@ Dispatch is **registry-based**, not an `if/elif` chain: `operations_pie_menu.py`
 3. **Succinct & Modular**: Inherit from `BasePieMenuExtension` for new pie menus, and place operation logic in subpackages rather than monolithic files.
 4. **Structured Logging**: Use `log_info`, `log_warning`, and `log_error` from `krita_pie_menu` rather than swallowing exceptions.
 6. **Never Call `self.hide()` During Pie Menu Interrupts**: Calling `QWidget.hide()` automatically revokes `grabKeyboard()`. To visually hide the Pie Menu while keeping background event listening active until `onSpaceRelease`, set `self.setWindowOpacity(0.0)` and `self.move(-10000, -10000)` instead.
+7. **No License Files**: Never create, add, or suggest license files (e.g., `LICENSE`, `LICENSE.md`, `COPYING`) or license headers in source files. This repository is intentionally unlicensed.
 
 ---
 
