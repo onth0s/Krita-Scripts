@@ -39,27 +39,28 @@ def execute_duplicate_layer() -> None:
         sel = doc.selection()
         if sel and sel.width() > 0 and sel.height() > 0:
             use_cut = read_condition_flag("duplicate_cut", True)
-            action_candidates = ["edit_cut", "cut"] if use_cut else ["edit_copy", "copy"]
-            clip_act = resolve_action(app, action_candidates)
+            clip_act = resolve_action(app, ["edit_cut", "cut"] if use_cut else ["edit_copy", "copy"])
             paste_act = resolve_action(app, ["edit_paste", "paste"])
 
             if clip_act and paste_act:
+                # Execute cut or copy on the current active layer selection
                 clip_act.trigger()
                 QApplication.processEvents()
                 doc.waitForDone()
 
+                # Paste creates a new paint layer containing the cut/copied selection
                 paste_act.trigger()
                 QApplication.processEvents()
                 doc.waitForDone()
 
                 pasted_layer = doc.activeNode()
                 if pasted_layer and pasted_layer != node:
-                    # When cutting selection: lock and hide the first cut+paste as backup,
-                    # then duplicate it above as the active, unlocked working copy.
                     if use_cut:
+                        # Lock and hide the first pasted cut layer as backup
                         pasted_layer.setLocked(True)
                         pasted_layer.setVisible(False)
 
+                        # Create working duplicate directly above the locked pasted layer
                         parent = pasted_layer.parentNode() or doc.rootNode()
                         dup_layer = pasted_layer.duplicate()
                         parent.addChildNode(dup_layer, pasted_layer)
@@ -68,7 +69,6 @@ def execute_duplicate_layer() -> None:
                         dup_layer.setLocked(False)
                         doc.setActiveNode(dup_layer)
                     else:
-                        # In Copy mode: leave original layer untouched or backed up, pasted layer is active
                         pasted_layer.setVisible(True)
                         pasted_layer.setLocked(False)
                         doc.setActiveNode(pasted_layer)
