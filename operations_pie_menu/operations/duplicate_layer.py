@@ -44,10 +44,6 @@ def execute_duplicate_layer() -> None:
             paste_act = resolve_action(app, ["edit_paste", "paste"])
 
             if clip_act and paste_act:
-                # Lock and hide original node as a backup working copy, matching full layer duplication
-                node.setLocked(True)
-                node.setVisible(False)
-
                 clip_act.trigger()
                 QApplication.processEvents()
                 doc.waitForDone()
@@ -58,9 +54,24 @@ def execute_duplicate_layer() -> None:
 
                 pasted_layer = doc.activeNode()
                 if pasted_layer and pasted_layer != node:
-                    pasted_layer.setVisible(True)
-                    pasted_layer.setLocked(False)
-                    doc.setActiveNode(pasted_layer)
+                    # When cutting selection: lock and hide the first cut+paste as backup,
+                    # then duplicate it above as the active, unlocked working copy.
+                    if use_cut:
+                        pasted_layer.setLocked(True)
+                        pasted_layer.setVisible(False)
+
+                        parent = pasted_layer.parentNode() or doc.rootNode()
+                        dup_layer = pasted_layer.duplicate()
+                        parent.addChildNode(dup_layer, pasted_layer)
+
+                        dup_layer.setVisible(True)
+                        dup_layer.setLocked(False)
+                        doc.setActiveNode(dup_layer)
+                    else:
+                        # In Copy mode: leave original layer untouched or backed up, pasted layer is active
+                        pasted_layer.setVisible(True)
+                        pasted_layer.setLocked(False)
+                        doc.setActiveNode(pasted_layer)
 
                 deselect_act = app.action("deselect")
                 if deselect_act:
@@ -71,8 +82,8 @@ def execute_duplicate_layer() -> None:
                 doc.waitForDone()
 
                 doc.refreshProjection()
-                op_mode = "Cut+Pasted" if use_cut else "Copied+Pasted"
-                log_info("duplicate_layer", f"{op_mode} active selection to new layer from '{node.name()}'.")
+                op_mode = "Cut+Duplicated" if use_cut else "Copied+Pasted"
+                log_info("duplicate_layer", f"{op_mode} active selection from '{node.name()}'.")
                 return
 
         parent = node.parentNode() or doc.rootNode()
