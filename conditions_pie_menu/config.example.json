@@ -1,5 +1,7 @@
 {
   "duplicate_reflay": true,
+  "keep_aspect_ratio": true,
+  "duplicate_cut": true,
   "N": {
     "label": "Stub North",
     "action_id": "cond_stub_n"
@@ -9,8 +11,8 @@
     "action_id": "cond_toggle_duplicate_reflay"
   },
   "E": {
-    "label": "Stub East",
-    "action_id": "cond_stub_e"
+    "label": "Duplicate Cut",
+    "action_id": "cond_toggle_duplicate_cut"
   },
   "SE": {
     "label": "Stub South East",
@@ -31,6 +33,6 @@
   "NW": {
     "label": "Stub North West",
     "action_id": "cond_stub_nw"
-  },
-  "keep_aspect_ratio": true
+  }
 }
+

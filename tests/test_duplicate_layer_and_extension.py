@@ -38,11 +38,13 @@ class _Parent:
 
 
 class _Doc:
-    def __init__(self, node=None):
+    def __init__(self, node=None, selection=None):
         self._node = node
         self._root = _Parent()
+        self._selection = selection
         self.active = []
         self.refreshed = 0
+        self.done_waits = 0
 
     def activeNode(self):
         return self._node
@@ -52,17 +54,31 @@ class _Doc:
 
     def setActiveNode(self, node):
         self.active.append(node)
+        self._node = node
 
     def refreshProjection(self):
         self.refreshed += 1
 
+    def selection(self):
+        return self._selection
+
+    def setSelection(self, sel):
+        self._selection = sel
+
+    def waitForDone(self):
+        self.done_waits += 1
+
 
 class _App:
-    def __init__(self, doc=None):
+    def __init__(self, doc=None, actions=None):
         self._doc = doc
+        self._actions = actions or {}
 
     def activeDocument(self):
         return self._doc
+
+    def action(self, name):
+        return self._actions.get(name)
 
 
 @pytest.fixture
@@ -134,6 +150,123 @@ def test_execute_duplicate_layer_exception(monkeypatch, warnings):
 
     assert logged
     assert warnings and "boom" in str(warnings[0])
+
+
+class _Sel:
+    def __init__(self, w, h):
+        self._w = w
+        self._h = h
+
+    def width(self):
+        return self._w
+
+    def height(self):
+        return self._h
+
+
+class _Act:
+    def __init__(self):
+        self.triggered = 0
+
+    def trigger(self):
+        self.triggered += 1
+
+
+def test_execute_duplicate_layer_selection_cut(monkeypatch, warnings):
+    module = "operations_pie_menu.operations.duplicate_layer"
+    node = _Node("sketch")
+    pasted = _Node("pasted_sketch")
+    doc = _Doc(node=node, selection=_Sel(50, 50))
+    actions = {
+        "edit_cut": _Act(),
+        "edit_paste": _Act(),
+        "deselect": _Act(),
+    }
+    app = _App(doc=doc, actions=actions)
+
+    # When paste triggers in Krita, activeNode changes to pasted layer
+    def fake_paste_trigger():
+        actions["edit_paste"].triggered += 1
+        doc.setActiveNode(pasted)
+
+    actions["edit_paste"].trigger = fake_paste_trigger
+
+    monkeypatch.setattr(module + ".Krita.instance", staticmethod(lambda: app))
+    monkeypatch.setattr(module + ".read_condition_flag", lambda flag, d: True)
+
+    execute_duplicate_layer()
+
+    assert actions["edit_cut"].triggered == 1
+    assert actions["edit_paste"].triggered == 1
+    assert actions["deselect"].triggered == 1
+    assert doc.activeNode() == pasted
+    assert doc.refreshed == 1
+    assert warnings == []
+
+
+def test_execute_duplicate_layer_selection_copy(monkeypatch, warnings):
+    module = "operations_pie_menu.operations.duplicate_layer"
+    node = _Node("sketch")
+    pasted = _Node("pasted_sketch")
+    doc = _Doc(node=node, selection=_Sel(50, 50))
+    actions = {
+        "edit_copy": _Act(),
+        "edit_paste": _Act(),
+        "deselect": _Act(),
+    }
+    app = _App(doc=doc, actions=actions)
+
+    def fake_paste_trigger():
+        actions["edit_paste"].triggered += 1
+        doc.setActiveNode(pasted)
+
+    actions["edit_paste"].trigger = fake_paste_trigger
+
+    monkeypatch.setattr(module + ".Krita.instance", staticmethod(lambda: app))
+    monkeypatch.setattr(module + ".read_condition_flag", lambda flag, d: False)
+
+    execute_duplicate_layer()
+
+    assert actions["edit_copy"].triggered == 1
+    assert actions["edit_paste"].triggered == 1
+    assert actions["deselect"].triggered == 1
+    assert doc.activeNode() == pasted
+    assert doc.refreshed == 1
+    assert warnings == []
+
+
+def test_execute_duplicate_layer_selection_deselect_fallback(monkeypatch, warnings):
+    module = "operations_pie_menu.operations.duplicate_layer"
+    node = _Node("sketch")
+    doc = _Doc(node=node, selection=_Sel(50, 50))
+    actions = {
+        "edit_cut": _Act(),
+        "edit_paste": _Act(),
+    }
+    app = _App(doc=doc, actions=actions)
+    monkeypatch.setattr(module + ".Krita.instance", staticmethod(lambda: app))
+    monkeypatch.setattr(module + ".read_condition_flag", lambda flag, d: True)
+
+    execute_duplicate_layer()
+
+    assert actions["edit_cut"].triggered == 1
+    assert actions["edit_paste"].triggered == 1
+    assert doc.selection() is None
+
+
+def test_execute_duplicate_layer_empty_selection_fallback(monkeypatch, warnings):
+    module = "operations_pie_menu.operations.duplicate_layer"
+    node = _Node("working")
+    parent = _Parent()
+    doc = _Doc(node=node, selection=_Sel(0, 0))
+    doc._root = parent
+    monkeypatch.setattr(module + ".Krita.instance", staticmethod(lambda: _App(doc)))
+
+    execute_duplicate_layer()
+
+    assert node._locked is True and node._visible is False
+    assert node.dup_calls == 1
+
 
 
 # ---- BasePieMenuExtension ---------------------------------------------------

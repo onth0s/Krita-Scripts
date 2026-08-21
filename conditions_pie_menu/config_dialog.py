@@ -14,6 +14,7 @@ class ConditionsConfigDialog(BasePieConfigDialog):
         self.inputs = {}
         self.chk_dup_reflay = None
         self.chk_keep_ar = None
+        self.chk_dup_cut = None
         super().__init__(
             config_path=config_path,
             title="Configure Conditions Pie Menu",
@@ -32,8 +33,12 @@ class ConditionsConfigDialog(BasePieConfigDialog):
         self.chk_keep_ar.setChecked(bool(self.current_config.get("keep_aspect_ratio", False)))
         grid.addWidget(self.chk_keep_ar, 1, 0, 1, 3)
 
+        self.chk_dup_cut = QCheckBox("Enable Duplicate Cut by Default (Cut vs Copy)", self)
+        self.chk_dup_cut.setChecked(bool(self.current_config.get("duplicate_cut", True)))
+        grid.addWidget(self.chk_dup_cut, 2, 0, 1, 3)
+
         # 2. Sector label / action_id editors
-        for idx, (code, name) in enumerate(SECTOR_NAMES, start=2):
+        for idx, (code, name) in enumerate(SECTOR_NAMES, start=3):
             data = self.current_config.get(code, {})
             lbl = QLabel(f"<b>{name}:</b>", self)
 
@@ -53,9 +58,11 @@ class ConditionsConfigDialog(BasePieConfigDialog):
         # build_sector_editors() always runs in init_base_ui() before this is called.
         assert self.chk_dup_reflay is not None
         assert self.chk_keep_ar is not None
+        assert self.chk_dup_cut is not None
         cfg = {
             "duplicate_reflay": self.chk_dup_reflay.isChecked(),
             "keep_aspect_ratio": self.chk_keep_ar.isChecked(),
+            "duplicate_cut": self.chk_dup_cut.isChecked(),
         }
         for code, (lbl_edit, act_edit) in self.inputs.items():
             cfg[code] = {"label": lbl_edit.text().strip(), "action_id": act_edit.text().strip()}

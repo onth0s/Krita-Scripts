@@ -33,13 +33,14 @@ def test_build_pie_config_toggle_states_from_config(tmp_path, monkeypatch):
     assert set(callbacks) == set(SECTOR_CODES)
     assert set(items_meta) == set(SECTOR_CODES)
 
-    # Validators cover only the 6 stub sectors; the NE/W toggles are always live.
-    assert set(validators) == set(SECTOR_CODES) - {"NE", "W"}
+    # Validators cover only the 5 stub sectors; the NE/W/E toggles are always live.
+    assert set(validators) == set(SECTOR_CODES) - {"NE", "W", "E"}
 
     assert toggle_states["NE"] is True
     assert toggle_states["W"] is False
+    assert toggle_states["E"] is True
 
-    for code in ("N", "E", "SE", "S", "SW", "NW"):
+    for code in ("N", "SE", "S", "SW", "NW"):
         ok, reason = validators[code]()
         assert ok is False
         assert reason
@@ -65,6 +66,10 @@ def test_toggle_callbacks_flip_states(tmp_path, monkeypatch):
     callbacks["W"]()
     assert ext.get_condition("keep_aspect_ratio") is True
     assert toasts[-1].startswith("Keep Aspect Ratio")
+
+    callbacks["E"]()
+    assert ext.get_condition("duplicate_cut") is False
+    assert toasts[-1].startswith("Duplicate Cut: OFF")
 
 
 def test_stub_callbacks_toast_not_crash(tmp_path, monkeypatch):

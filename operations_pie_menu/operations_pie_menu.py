@@ -63,6 +63,7 @@ class OperationsPieMenuExtension(BasePieMenuExtension):
             default_config=DEFAULT_OPERATIONS_CONFIG,
             accent_color="#805AD5",
             object_name="OperationsPieWidget",
+            menu_title="OPERATIONS",
         )
 
     def createActions(self, window):

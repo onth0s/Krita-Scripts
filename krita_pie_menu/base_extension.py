@@ -19,6 +19,7 @@ class BasePieMenuExtension(Extension):
         default_config: Dict[str, Any],
         accent_color: str = "#3182CE",
         object_name: str = "BasePieWidget",
+        menu_title: Optional[str] = None,
     ):
         super().__init__(parent)
         self.pie_widget: Optional[PieMenuWidget] = None
@@ -26,6 +27,7 @@ class BasePieMenuExtension(Extension):
         self.default_config = default_config
         self.accent_color = accent_color
         self.object_name = object_name
+        self.menu_title = menu_title
 
     def setup(self):
         pass
@@ -70,6 +72,7 @@ class BasePieMenuExtension(Extension):
             toggle_states=toggle_states,
             accent_color=self.accent_color,
             object_name=self.object_name,
+            menu_title=self.menu_title,
         )
         try:
             self.pie_widget.destroyed.connect(self._on_widget_destroyed)

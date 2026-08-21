@@ -1,7 +1,7 @@
 from typing import Any, Callable, Dict, Optional, Tuple
 
-from PyQt5.QtCore import QPoint, Qt
-from PyQt5.QtGui import QBrush, QColor, QCursor, QPainter, QPen
+from PyQt5.QtCore import QPoint, QRect, Qt
+from PyQt5.QtGui import QBrush, QColor, QCursor, QFont, QPainter, QPen
 from PyQt5.QtWidgets import QPushButton, QWidget
 
 from .base_config_dialog import SECTOR_CODES
@@ -31,10 +31,12 @@ class PieMenuWidget(QWidget):
         toggle_states: Optional[Dict[str, bool]] = None,
         accent_color: str = "#3182CE",
         object_name: str = "PieMenuWidget",
+        menu_title: Optional[str] = None,
         parent: Optional[QWidget] = None,
     ) -> None:
         super().__init__(parent, Qt.FramelessWindowHint | Qt.Popup | Qt.NoDropShadowWindowHint)
         self.setObjectName(object_name)
+        self.menu_title = menu_title or object_name.replace("PieWidget", "").upper()
         self.setAttribute(Qt.WA_TranslucentBackground, True)
         self.setAttribute(Qt.WA_DeleteOnClose, True)
         self.setMouseTracking(True)
@@ -225,6 +227,28 @@ class PieMenuWidget(QWidget):
                 painter.setPen(QPen(QColor(113, 128, 150, 200), 2))
                 painter.setBrush(QBrush(QColor(45, 55, 72, 180)))
             painter.drawEllipse(center, 26, 26)
+
+        # Floating menu title text with subtle accent contour shadow above center circle
+        if getattr(self, "menu_title", None):
+            title_text = str(self.menu_title).strip()
+            if title_text:
+                font = QFont("Segoe UI", 7)
+                font.setBold(True)
+                font.setLetterSpacing(QFont.AbsoluteSpacing, 1.2)
+                painter.setFont(font)
+
+                # Centered text box placed clearly above the circle (circle top is at CENTER_OFFSET - 26)
+                text_rect = QRect(CENTER_OFFSET - 60, CENTER_OFFSET - 44, 120, 14)
+
+                # Draw subtle accent contour shadow (matching the pie's accent color)
+                shadow_color = QColor(accent.red(), accent.green(), accent.blue(), 140)
+                painter.setPen(QPen(shadow_color))
+                for dx, dy in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+                    painter.drawText(text_rect.translated(dx, dy), Qt.AlignCenter, title_text)
+
+                # Draw soft foreground letters
+                painter.setPen(QPen(QColor(203, 213, 225, 220)))
+                painter.drawText(text_rect, Qt.AlignCenter, title_text)
 
         # Draw visual underscore bar for toggle buttons using a lighter tint of the accent
         accent_color = QColor(self.accent_color)

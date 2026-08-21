@@ -152,6 +152,7 @@ def test_conditions_config_dialog_collect(tmp_path):
     dlg = ConditionsConfigDialog(str(tmp_path / "c.json"))
     dlg.chk_dup_reflay.isChecked = lambda: True
     dlg.chk_keep_ar.isChecked = lambda: False
+    dlg.chk_dup_cut.isChecked = lambda: True
     for code in dlg.inputs:
         lbl, act = dlg.inputs[code]
         lbl.text = (lambda c=code: f"Label {c}")
@@ -160,4 +161,5 @@ def test_conditions_config_dialog_collect(tmp_path):
     cfg = dlg.collect_config()
     assert cfg["duplicate_reflay"] is True
     assert cfg["keep_aspect_ratio"] is False
-    assert set(cfg) == set(SECTOR_CODES) | {"duplicate_reflay", "keep_aspect_ratio"}
+    assert cfg["duplicate_cut"] is True
+    assert set(cfg) == set(SECTOR_CODES) | {"duplicate_reflay", "keep_aspect_ratio", "duplicate_cut"}

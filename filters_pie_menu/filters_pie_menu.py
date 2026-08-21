@@ -38,6 +38,7 @@ class FiltersPieMenuExtension(BasePieMenuExtension):
             default_config=DEFAULT_FILTERS_CONFIG,
             accent_color="#3182CE",
             object_name="FiltersPieWidget",
+            menu_title="FILTERS",
         )
 
     def createActions(self, window: Any) -> None:

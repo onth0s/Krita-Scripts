@@ -7,9 +7,10 @@ from .config_dialog import ConditionsConfigDialog
 DEFAULT_CONDITIONS_CONFIG = {
     "duplicate_reflay": False,
     "keep_aspect_ratio": False,
+    "duplicate_cut": True,
     "N": {"label": "Stub North", "action_id": "cond_stub_n"},
     "NE": {"label": "Duplicate RefLay", "action_id": "cond_toggle_duplicate_reflay"},
-    "E": {"label": "Stub East", "action_id": "cond_stub_e"},
+    "E": {"label": "Duplicate Cut", "action_id": "cond_toggle_duplicate_cut"},
     "SE": {"label": "Stub South East", "action_id": "cond_stub_se"},
     "S": {"label": "Stub South", "action_id": "cond_stub_s"},
     "SW": {"label": "Stub South West", "action_id": "cond_stub_sw"},
@@ -32,6 +33,7 @@ class ConditionsPieMenuExtension(BasePieMenuExtension):
             default_config=DEFAULT_CONDITIONS_CONFIG,
             accent_color="#D69E2E",
             object_name="ConditionsPieWidget",
+            menu_title="CONDITIONS",
         )
 
     def createActions(self, window):
@@ -64,8 +66,8 @@ class ConditionsPieMenuExtension(BasePieMenuExtension):
         def disabled_stub():
             return False, "Stub condition not configured."
 
-        # 6 stubs: all sectors except the NE/W toggles
-        for code in [c for c in SECTOR_CODES if c not in ("NE", "W")]:
+        # 5 stubs: all sectors except the NE/W/E toggles
+        for code in [c for c in SECTOR_CODES if c not in ("NE", "W", "E")]:
             validators[code] = disabled_stub
             callbacks[code] = self.make_stub_callback(code)
 
@@ -78,6 +80,11 @@ class ConditionsPieMenuExtension(BasePieMenuExtension):
         ar_state = cfg.get("keep_aspect_ratio", False)
         toggle_states["W"] = ar_state
         callbacks["W"] = self.toggle_keep_aspect_ratio
+
+        # E sector: Duplicate Cut toggle (cut vs copy on duplicate)
+        dup_cut_state = cfg.get("duplicate_cut", True)
+        toggle_states["E"] = dup_cut_state
+        callbacks["E"] = self.toggle_duplicate_cut
 
         # Build items_meta
         for code in SECTOR_CODES:
@@ -98,9 +105,15 @@ class ConditionsPieMenuExtension(BasePieMenuExtension):
         status_str = "ON" if new_state else "OFF"
         ToastNotification.show_toast(f"Keep Aspect Ratio (Fit): {status_str}", toast_type="info")
 
+    def toggle_duplicate_cut(self):
+        new_state = self.toggle_condition("duplicate_cut")
+        status_str = "ON" if new_state else "OFF"
+        ToastNotification.show_toast(f"Duplicate Cut: {status_str}", toast_type="info")
+
     def make_stub_callback(self, code: str):
         return lambda: ToastNotification.show_toast(f"Condition [{code}] stub not implemented", toast_type="info")
 
     def open_config_dialog(self):
         dlg = ConditionsConfigDialog(self.config_path, on_save_callback=None)
         dlg.exec_()
+

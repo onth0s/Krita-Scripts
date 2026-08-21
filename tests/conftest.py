@@ -144,11 +144,11 @@ def _install_krita_stub():
 def _install_pyqt5_stubs():
     _register(
         "PyQt5.QtCore",
-        ["QPoint", "Qt", "QEasingCurve", "QPropertyAnimation", "QTimer", "QByteArray"],
+        ["QPoint", "QRect", "Qt", "QEasingCurve", "QPropertyAnimation", "QTimer", "QByteArray"],
     )
     _register(
         "PyQt5.QtGui",
-        ["QBrush", "QColor", "QCursor", "QPainter", "QPainterPath", "QPen", "QImage"],
+        ["QBrush", "QColor", "QCursor", "QFont", "QPainter", "QPainterPath", "QPen", "QImage"],
     )
     _register(
         "PyQt5.QtWidgets",
