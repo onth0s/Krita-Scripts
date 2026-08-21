@@ -44,6 +44,10 @@ def execute_duplicate_layer() -> None:
             paste_act = resolve_action(app, ["edit_paste", "paste"])
 
             if clip_act and paste_act:
+                # Lock and hide original node as a backup working copy, matching full layer duplication
+                node.setLocked(True)
+                node.setVisible(False)
+
                 clip_act.trigger()
                 QApplication.processEvents()
                 doc.waitForDone()
@@ -54,6 +58,8 @@ def execute_duplicate_layer() -> None:
 
                 pasted_layer = doc.activeNode()
                 if pasted_layer and pasted_layer != node:
+                    pasted_layer.setVisible(True)
+                    pasted_layer.setLocked(False)
                     doc.setActiveNode(pasted_layer)
 
                 deselect_act = app.action("deselect")

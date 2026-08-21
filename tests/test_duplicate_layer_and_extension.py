@@ -196,6 +196,8 @@ def test_execute_duplicate_layer_selection_cut(monkeypatch, warnings):
 
     execute_duplicate_layer()
 
+    assert node._locked is True and node._visible is False
+    assert pasted._locked is False and pasted._visible is True
     assert actions["edit_cut"].triggered == 1
     assert actions["edit_paste"].triggered == 1
     assert actions["deselect"].triggered == 1
@@ -227,6 +229,8 @@ def test_execute_duplicate_layer_selection_copy(monkeypatch, warnings):
 
     execute_duplicate_layer()
 
+    assert node._locked is True and node._visible is False
+    assert pasted._locked is False and pasted._visible is True
     assert actions["edit_copy"].triggered == 1
     assert actions["edit_paste"].triggered == 1
     assert actions["deselect"].triggered == 1
