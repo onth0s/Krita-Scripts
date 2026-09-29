@@ -172,6 +172,8 @@ class Doc:
         self._selection = None
         self._u8rgba = True
         self._color_depth = "U8"
+        self._width = 4
+        self._height = 4
         self.done_waits = 0
 
     def activeNode(self):
@@ -204,10 +206,10 @@ class Doc:
         self.done_waits += 1
 
     def width(self):
-        return 4
+        return self._width
 
     def height(self):
-        return 4
+        return self._height
 
     def colorModel(self):
         return "RGBA"

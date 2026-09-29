@@ -258,3 +258,131 @@ def test_update_selection_from_mouse_uses_cursor_fallback_origin(monkeypatch):
     monkeypatch.setattr(widget, "mapToGlobal", lambda point: fake_global(260, 260))
     widget.update_selection_from_mouse()
     assert widget.active_direction is None
+
+
+# ── one dispatch per gesture (the Ctrl+Space double-fire) ─────────────────────
+
+
+def _chord_widget(qt_enums, monkeypatch, qt_super, key="E", fired=None):
+    """A widget with a live sector callback, as if a chord gesture selected `key`."""
+    if fired is None:
+        fired = []
+    widget = PieMenuWidget({key: lambda: fired.append(1)}, items_meta={key: ("Test", "x")})
+    monkeypatch.setattr(widget, "update_selection_from_mouse", lambda: None)
+    widget.active_direction = key
+    return widget, qt_enums
+
+
+def test_ctrl_release_after_space_does_not_dispatch_twice(qt_enums, monkeypatch, qt_super):
+    """
+    Operations binds Ctrl+Space, so TWO keys from `trigger_keys` are held. The
+    first release used to dispatch; the second dispatched again. For a fast
+    operation (bw_preview) single_flight is already free by then, so both ran and
+    the layer toggled twice -- the "flicker".
+    """
+    fired = []
+    widget, enums = _chord_widget(qt_enums, monkeypatch, qt_super, fired=fired)
+
+    widget.keyReleaseEvent(_Event(enums["Key_Space"]))
+    widget.keyReleaseEvent(_Event(enums["Key_Control"]))
+
+    assert fired == [1], "the chord must dispatch exactly once"
+
+
+def test_space_release_after_ctrl_does_not_dispatch_twice(qt_enums, monkeypatch, qt_super):
+    fired = []
+    widget, enums = _chord_widget(qt_enums, monkeypatch, qt_super, fired=fired)
+
+    widget.keyReleaseEvent(_Event(enums["Key_Control"]))
+    widget.keyReleaseEvent(_Event(enums["Key_Space"]))
+
+    assert fired == [1], "release order must not matter"
+
+
+def test_dispatch_latch_resets_on_next_gesture(qt_enums, monkeypatch, qt_super):
+    fired = []
+    widget, enums = _chord_widget(qt_enums, monkeypatch, qt_super, fired=fired)
+
+    widget.keyReleaseEvent(_Event(enums["Key_Space"]))
+    widget.keyReleaseEvent(_Event(enums["Key_Space"]))
+    assert fired == [1]
+
+    # show_at_cursor() starts a fresh gesture, so the next one must fire again.
+    widget.show_at_cursor()
+    monkeypatch.setattr(widget, "update_selection_from_mouse", lambda: None)
+    widget.active_direction = "E"
+    widget.keyReleaseEvent(_Event(enums["Key_Space"]))
+
+    assert fired == [1, 1]
+
+
+def test_non_trigger_key_release_does_not_consume_the_latch(qt_enums, monkeypatch, qt_super):
+    """An unrelated key release must leave the gesture's one dispatch available."""
+    fired = []
+    widget, enums = _chord_widget(qt_enums, monkeypatch, qt_super, fired=fired)
+
+    widget.keyReleaseEvent(_Event(object()))  # some other key -> super() fallthrough
+    assert fired == []
+
+    widget.keyReleaseEvent(_Event(enums["Key_Space"]))
+    assert fired == [1]
+
+
+def test_interrupted_gesture_never_dispatches(qt_enums, monkeypatch, qt_super):
+    """F11 cancels the gesture; the later Space release must only close the menu."""
+    fired = []
+    widget, enums = _chord_widget(qt_enums, monkeypatch, qt_super, fired=fired)
+
+    widget.keyPressEvent(_Event(enums["Key_F11"]))
+    widget.active_direction = "E"  # user drifts back onto a sector
+    widget.keyReleaseEvent(_Event(enums["Key_Space"]))
+
+    assert fired == []
+
+
+def test_double_click_on_a_sector_dispatches_once(monkeypatch, qt_super):
+    """A fast double-click must not toggle a sector twice either."""
+    fired = []
+    widget = PieMenuWidget({"E": lambda: fired.append(1)}, items_meta={"E": ("Test", "x")})
+    monkeypatch.setattr(widget, "cleanup_and_close", lambda: None)
+
+    handler = widget.make_click_handler("E", widget.callbacks["E"])
+    handler()
+    handler()
+
+    assert fired == [1]
+
+
+def test_claim_dispatch_latches_and_logs(monkeypatch):
+    from krita_pie_menu import pie_widget
+
+    logged = []
+    monkeypatch.setattr(pie_widget, "log_info", lambda *a: logged.append(a))
+    widget = PieMenuWidget({})
+
+    assert widget._claim_dispatch() is True
+    assert widget._claim_dispatch() is False
+    assert logged and "duplicate dispatch" in str(logged[0])
+
+
+def test_deadzone_release_then_second_release_dispatches_nothing(
+    qt_enums, monkeypatch, qt_super
+):
+    """
+    A cancelled gesture (cursor in the deadzone) closes the menu. Without the
+    latch, the second key release recomputed the direction from a now-hidden
+    widget and could fire an arbitrary sector.
+    """
+    fired = []
+    widget, enums = _chord_widget(qt_enums, monkeypatch, qt_super, fired=fired)
+    monkeypatch.setattr(widget, "update_selection_from_mouse", lambda: setattr(
+        widget, "active_direction", None
+    ))
+
+    widget.keyReleaseEvent(_Event(enums["Key_Space"]))  # no direction -> just closes
+    assert fired == []
+
+    widget.active_direction = "E"
+    widget.keyReleaseEvent(_Event(enums["Key_Control"]))
+
+    assert fired == [], "a cancelled gesture must not fire a sector on the second release"

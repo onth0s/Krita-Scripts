@@ -6,6 +6,7 @@ from PyQt5.QtWidgets import QPushButton, QWidget
 
 from .base_config_dialog import SECTOR_CODES
 from .geometry import direction_from_vector
+from .logger import log_info
 from .toast_notification import ToastNotification
 from .utils import single_flight
 
@@ -50,6 +51,7 @@ class PieMenuWidget(QWidget):
         self.buttons: Dict[str, QPushButton] = {}
         self.active_direction: Optional[str] = None
         self.is_interrupted: bool = False
+        self._action_dispatched: bool = False
         self.evaluate_sector_states()
         self.init_ui()
 
@@ -167,9 +169,33 @@ class PieMenuWidget(QWidget):
 
     def make_click_handler(self, key, callback):
         def handler():
-            self._execute_sector(key, callback)
+            if self._claim_dispatch():
+                self._execute_sector(key, callback)
 
         return handler
+
+    def _claim_dispatch(self) -> bool:
+        """
+        Returns True the first time it is called in a gesture, False on every later call.
+
+        A pie gesture is a key *chord*: operations binds Ctrl+Space and conditions
+        binds Ctrl+Tab, so two keys from `trigger_keys` are held down at once. Each
+        release delivers a `keyReleaseEvent`, and Qt does not purge already-queued
+        events when the widget hides -- so `close()` does not stop the second
+        release from dispatching as well.
+
+        The `single_flight` lock in `_execute_sector` cannot cover this: it is
+        released as soon as the callback returns, and a fast operation (e.g.
+        `bw_preview`, ~1ms) has already returned by then. Both dispatches ran, the
+        layer toggled twice, and the action appeared to do nothing.
+
+        Reset per gesture in `show_at_cursor()`.
+        """
+        if self._action_dispatched:
+            log_info("pie_widget", "Ignoring a duplicate dispatch for the same pie gesture.")
+            return False
+        self._action_dispatched = True
+        return True
 
     def _execute_sector(self, key, callback):
         is_enabled, reason = self.sector_states.get(key, (True, ""))
@@ -215,6 +241,7 @@ class PieMenuWidget(QWidget):
         self.move(cursor_pos.x() - CENTER_OFFSET, cursor_pos.y() - CENTER_OFFSET)
         self.active_direction = None
         self.is_interrupted = False
+        self._action_dispatched = False
         self.update_button_highlights()
         self.setWindowOpacity(1.0)
         self.show()
@@ -339,7 +366,11 @@ class PieMenuWidget(QWidget):
             return
 
         if event.key() in trigger_keys:
-            self.trigger_selected_action()
+            # Only the FIRST trigger-key release of this chord dispatches; see
+            # _claim_dispatch. Without it, releasing Ctrl after Space fired the
+            # sector a second time.
+            if self._claim_dispatch():
+                self.trigger_selected_action()
         else:
             super().keyReleaseEvent(event)
 
