@@ -7,6 +7,7 @@ from PyQt5.QtWidgets import QPushButton, QWidget
 from .base_config_dialog import SECTOR_CODES
 from .geometry import direction_from_vector
 from .toast_notification import ToastNotification
+from .utils import single_flight
 
 WIDGET_SIZE = 520
 CENTER_OFFSET = 260
@@ -177,9 +178,24 @@ class PieMenuWidget(QWidget):
         if not is_enabled:
             ToastNotification.show_toast(reason or "Action is disabled in current context.", toast_type="warning")
             return
-        result = callback() if callback else None
-        if result is False:
-            ToastNotification.show_toast(f"Action '{label}' could not be executed.", toast_type="warning")
+        # Operations pump the Qt event loop, which re-enters here. Without the
+        # lock, re-pressing the pie-menu trigger mid-operation nests a second copy
+        # of the same operation inside the first; both then mutate one layer stack.
+        with single_flight(label or key) as acquired:
+            if not acquired:
+                ToastNotification.show_toast(
+                    "Another pie menu action is still running.", toast_type="warning"
+                )
+                return
+            result = callback() if callback else None
+        # Operations return True on success, False on failure, or (False, reason)
+        # to explain the failure in the toast. Anything else counts as success.
+        failed = result is False or (isinstance(result, tuple) and bool(result) and result[0] is False)
+        if failed:
+            detail = ""
+            if isinstance(result, tuple) and len(result) > 1 and result[1]:
+                detail = f" ({result[1]})"
+            ToastNotification.show_toast(f"Action '{label}' could not be executed.{detail}", toast_type="warning")
             return
         ToastNotification.show_toast(f"Triggered: {label}", toast_type="info")
 

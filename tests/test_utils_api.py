@@ -24,16 +24,33 @@ class _FakeNode:
 
 
 class _FakeParent:
-    def __init__(self):
+    def __init__(self, ok=True):
         self.added = []
+        self.ok = ok
 
     def addChildNode(self, node, reference_node):
+        # Mirrors libkis: returns bool, False when adding the node failed.
+        if not self.ok:
+            return False
         self.added.append((node, reference_node))
+        return True
+
+
+class _FakeView:
+    def __init__(self):
+        self.active_nodes = []
+        self.boom = False
+
+    def setActiveNode(self, node):
+        if self.boom:
+            raise RuntimeError("view gone")
+        self.active_nodes.append(node)
 
 
 class _FakeDoc:
-    def __init__(self, active_node=None):
+    def __init__(self, active_node=None, root=None):
         self._active = active_node
+        self._root = root if root is not None else _FakeParent()
         self.created = []
         self.refreshed = 0
         self.active_set = []
@@ -42,7 +59,7 @@ class _FakeDoc:
         return self._active
 
     def rootNode(self):
-        return _FakeParent()
+        return self._root
 
     def createNode(self, name, node_type):
         node = _FakeNode(name, node_type)
@@ -96,6 +113,57 @@ def test_create_incremental_layer_falls_back_to_root_node():
     assert created.name() == "4"
     assert doc.active_set == [created]
     assert doc.refreshed == 1
+
+
+def test_create_incremental_layer_syncs_view_when_supplied():
+    doc = _FakeDoc()
+    parent = _FakeParent()
+    ref = _FakeNode("sketch_3")
+    ref.setParent(parent)
+    view = _FakeView()
+
+    created = utils.create_incremental_layer(doc, ref, view=view)
+
+    assert view.active_nodes == [created], "merge-down acts on the view's active node"
+
+
+def test_create_incremental_layer_swallows_view_error():
+    doc = _FakeDoc()
+    parent = _FakeParent()
+    ref = _FakeNode("sketch_3")
+    ref.setParent(parent)
+    view = _FakeView()
+    view.boom = True
+
+    created = utils.create_incremental_layer(doc, ref, view=view)
+
+    assert created is not None
+    assert doc.active_set == [created]
+
+
+def test_create_incremental_layer_returns_none_when_parenting_fails(monkeypatch):
+    warned = []
+    monkeypatch.setattr(utils, "log_warning", lambda mod, msg: warned.append(msg))
+
+    doc = _FakeDoc()
+    parent = _FakeParent(ok=False)
+    ref = _FakeNode("sketch_3")
+    ref.setParent(parent)
+
+    assert utils.create_incremental_layer(doc, ref) is None
+    assert doc.active_set == [], "must not activate a layer that was never parented"
+    assert warned
+
+
+def test_create_incremental_layer_returns_none_when_no_parent_anywhere():
+    class _NoParent(_FakeNode):
+        def parentNode(self):
+            return None
+
+    doc = _FakeDoc(root=None)
+    doc._root = None
+    ref = _NoParent("sketch_3")
+    assert utils.create_incremental_layer(doc, ref) is None
 
 
 def test_resolve_action_finds_first_match():

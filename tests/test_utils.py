@@ -1,5 +1,7 @@
 import json
 
+import pytest
+
 from krita_pie_menu import utils
 
 
@@ -125,3 +127,33 @@ def test_save_config_failure_returns_false(monkeypatch, tmp_path):
 
     monkeypatch.setattr(utils.os, "makedirs", boom)
     assert utils.save_config(str(tmp_path / "x.json"), {"k": "v"}) is False
+
+
+# ── single_flight (re-entrancy guard) ────────────────────────────────────────
+
+
+def test_single_flight_acquires_and_releases():
+    with utils.single_flight("op_a") as acquired:
+        assert acquired is True
+    # Lock must be free again afterwards.
+    with utils.single_flight("op_b") as acquired:
+        assert acquired is True
+
+
+def test_single_flight_rejects_nested_acquisition(monkeypatch):
+    monkeypatch.setattr(utils, "log_warning", lambda mod, msg: None)
+    with utils.single_flight("op_a") as acquired:
+        assert acquired is True
+        with utils.single_flight("op_b") as nested:
+            assert nested is False
+
+
+def test_single_flight_releases_after_exception(monkeypatch):
+    monkeypatch.setattr(utils, "log_warning", lambda mod, msg: None)
+    with pytest.raises(RuntimeError):
+        with utils.single_flight("op_a") as acquired:
+            assert acquired is True
+            raise RuntimeError("boom")
+
+    with utils.single_flight("op_b") as acquired:
+        assert acquired is True, "a crashed operation must not wedge the lock"

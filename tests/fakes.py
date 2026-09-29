@@ -33,9 +33,15 @@ class Node:
         self._alpha_locked = None
         self._inherit_alpha = None
         self.removed = False
+        # Test hooks: flip to False to simulate Krita refusing a write / parenting.
+        self.setPixelData_ok = True
+        self.addChildNode_ok = True
 
     def name(self):
         return self._name
+
+    def __repr__(self):
+        return f"Node({self._name!r})"
 
     def setName(self, n):
         self._name = n
@@ -66,7 +72,7 @@ class Node:
 
     def remove(self):
         self.removed = True
-        if self._parent is not None:
+        if self._parent is not None and self in self._parent._children:
             self._parent._children.remove(self)
 
     def duplicate(self):
@@ -99,7 +105,9 @@ class Node:
         self._inherit_alpha = v
 
     def setPixelData(self, *args):
-        self._pixel = args
+        if self.setPixelData_ok:
+            self._pixel = args
+        return self.setPixelData_ok
 
     def pixelData(self, x, y, w, h):
         if self._pixel is not None:
@@ -128,12 +136,15 @@ class Group(Node):
         return dup
 
     def addChildNode(self, node, reference):
+        if not self.addChildNode_ok:
+            return False
         node._parent = self
         if reference is None:
             self._children.append(node)
         else:
             idx = self._children.index(reference)
             self._children.insert(idx + 1, node)
+        return True
 
     def projectionPixelData(self, x, y, w, h):
         return bytes(range(w * h * 4))
@@ -212,24 +223,44 @@ class Doc:
 
 
 class Action:
-    def __init__(self, checked=False):
+    """
+    Stand-in for a Krita QAction.
+
+    `enabled=False` reproduces the silent no-op of triggering a disabled action;
+    `on_trigger` lets a test simulate the side effect (e.g. a merge-down that
+    actually detaches the node) so postcondition checks can be exercised.
+    """
+
+    def __init__(self, checked=False, enabled=True, on_trigger=None):
         self.checked = checked
+        self.enabled = enabled
+        self.on_trigger = on_trigger
         self.triggered = 0
 
     def isChecked(self):
         return self.checked
 
+    def isEnabled(self):
+        return self.enabled
+
     def trigger(self):
         self.triggered += 1
+        if self.on_trigger is not None:
+            self.on_trigger()
 
 
 class View:
     def __init__(self):
         self.active_nodes = []
         self.resources = []
+        self._active = None
 
     def setActiveNode(self, node):
         self.active_nodes.append(node)
+        self._active = node
+
+    def activeNode(self):
+        return self._active
 
     def activateResource(self, preset):
         self.resources.append(preset)

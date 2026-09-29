@@ -3,7 +3,7 @@ from typing import Any, Callable, Dict, Tuple
 
 from krita import Krita
 
-from krita_pie_menu import BasePieMenuExtension, ToastNotification, read_condition_flag
+from krita_pie_menu import BasePieMenuExtension, OperationResult, ToastNotification, read_condition_flag
 
 from .config_dialog import OperationsConfigDialog
 from .operations import (
@@ -40,11 +40,12 @@ def _unassigned_validator() -> Tuple[bool, str]:
     return False, "Sector not configured."
 
 
-def _make_refine_callback(duplicate_reflay: bool) -> Callable[[], None]:
+def _make_refine_callback(duplicate_reflay: bool) -> Callable[[], OperationResult]:
     return lambda: execute_refine_sketch(duplicate_reflay=duplicate_reflay)
 
 
-OP_HANDLERS: Dict[str, Callable[[], None]] = {
+# Sector callbacks return True / False / (False, reason); see krita_pie_menu.utils.OperationResult.
+OP_HANDLERS: Dict[str, Callable[[], Any]] = {
     "op_setup_canvas": execute_init_canvas,
     "op_sanitize_group": execute_sanitize_group,
     "op_merge_to_black": execute_merge_to_black,

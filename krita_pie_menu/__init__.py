@@ -2,10 +2,12 @@ from .base_config_dialog import SECTOR_CODES, SECTOR_NAMES, BasePieConfigDialog
 from .base_extension import BasePieMenuExtension
 from .logger import log_error, log_info, log_warning
 from .pie_widget import PieMenuWidget
+from .sync import action_is_enabled, pump_events, settle_until, trigger_action_verified
 from .toast_notification import ToastNotification
 from .utils import (
     CONDITIONS_CONFIG_PATH,
     PROTECTED_NAMES,
+    OperationResult,
     create_incremental_layer,
     find_brush_preset,
     get_condition_flag,
@@ -19,6 +21,7 @@ from .utils import (
     resolve_action,
     save_config,
     set_foreground_black,
+    single_flight,
 )
 
 __all__ = [
@@ -30,6 +33,7 @@ __all__ = [
     "SECTOR_NAMES",
     "PROTECTED_NAMES",
     "CONDITIONS_CONFIG_PATH",
+    "OperationResult",
     "is_protected_layer",
     "is_u8_rgba",
     "is_empty_paint_layer",
@@ -46,4 +50,9 @@ __all__ = [
     "find_brush_preset",
     "set_foreground_black",
     "make_doc_active_validator",
+    "single_flight",
+    "action_is_enabled",
+    "pump_events",
+    "settle_until",
+    "trigger_action_verified",
 ]

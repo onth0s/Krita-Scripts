@@ -1,11 +1,52 @@
 import json
 import os
 import re
-from typing import Any, Dict, List, Optional, Set
+from contextlib import contextmanager
+from typing import Any, Dict, Iterator, List, Optional, Set, Tuple, Union
 
 from krita import Krita, ManagedColor
 
+from .logger import log_warning
+
 PROTECTED_NAMES: Set[str] = {"WHITE", "B&W", "LINES"}
+
+# Result contract for pie-menu operation callbacks, consumed by
+# PieMenuWidget._execute_sector:
+#   True          -> succeeded
+#   False         -> failed, generic warning toast
+#   (False, str)  -> failed, warning toast carrying the reason
+OperationResult = Union[bool, Tuple[bool, str]]
+
+# Name of the operation currently holding the re-entrancy lock, or None.
+_ACTIVE_OPERATION: Optional[str] = None
+
+
+@contextmanager
+def single_flight(name: str) -> Iterator[bool]:
+    """
+    Re-entrancy guard for pie-menu operations.
+
+    Operations pump the Qt event loop (``QApplication.processEvents()``) and
+    trigger actions. While that is happening the pie-menu trigger key -- or the
+    Tools > Scripts menu item -- can fire again, which would nest a second copy
+    of the same operation *inside* the first one. Both copies would then mutate
+    the same layer stack: duplicated overlays, cross-contaminated renumbering,
+    lost pixels.
+
+    Yields True when the caller acquired the lock and False when another
+    operation already holds it, in which case the caller must bail out without
+    touching the document. The lock is always released, including on exceptions.
+    """
+    global _ACTIVE_OPERATION
+    if _ACTIVE_OPERATION is not None:
+        log_warning(name, f"Rejected: '{_ACTIVE_OPERATION}' is already running.")
+        yield False
+        return
+    _ACTIVE_OPERATION = name
+    try:
+        yield True
+    finally:
+        _ACTIVE_OPERATION = None
 
 
 def is_protected_layer(node: Any) -> bool:
@@ -128,10 +169,13 @@ def get_incremental_layer_name(layer_name: str) -> str:
     return "1"
 
 
-def create_incremental_layer(doc, reference_layer=None):
+def create_incremental_layer(doc, reference_layer=None, view=None):
     """
     Creates a new paint layer directly above `reference_layer` (or activeNode if None).
-    Sets the new layer as active and calls `refreshProjection()`. Returns the new node.
+    Sets the new layer as active on both the document and (when supplied) the view,
+    because Krita actions such as merge-down act on the *view's* active node.
+    Calls `refreshProjection()`. Returns the new node, or None if it could not be
+    created or parented.
     """
     if doc is None:
         return None
@@ -146,9 +190,19 @@ def create_incremental_layer(doc, reference_layer=None):
     parent = reference_layer.parentNode()
     if parent is None:
         parent = doc.rootNode()
+    if parent is None:
+        return None
 
-    parent.addChildNode(new_layer, reference_layer)
+    if not parent.addChildNode(new_layer, reference_layer):
+        log_warning("create_incremental_layer", f"Could not parent new layer '{new_name}'; aborting.")
+        return None
+
     doc.setActiveNode(new_layer)
+    if view is not None:
+        try:
+            view.setActiveNode(new_layer)
+        except Exception:
+            pass
     doc.refreshProjection()
     return new_layer
 

@@ -103,6 +103,58 @@ def test_execute_sector_false_result_suppresses_success_toast(toast_recorder):
     assert "could not be executed" in message
 
 
+def test_execute_sector_tuple_failure_surfaces_reason(toast_recorder):
+    widget = make_widget()
+
+    widget._execute_sector("E", lambda: (False, "Selection was cut but paste failed."))
+
+    message, toast_type = toast_recorder[0]
+    assert toast_type == WARNING_TOAST
+    assert "could not be executed" in message
+    assert "paste failed" in message
+
+
+def test_execute_sector_tuple_success_shows_success(toast_recorder):
+    widget = make_widget()
+
+    widget._execute_sector("E", lambda: (True, ""))
+
+    message, toast_type = toast_recorder[0]
+    assert toast_type == INFO_TOAST
+    assert "Triggered" in message
+
+
+def test_execute_sector_tuple_failure_without_reason(toast_recorder):
+    widget = make_widget()
+
+    widget._execute_sector("E", lambda: (False, ""))
+
+    message, toast_type = toast_recorder[0]
+    assert toast_type == WARNING_TOAST
+    assert "could not be executed" in message
+
+
+def test_execute_sector_rejects_reentrant_operation(toast_recorder):
+    """Operations pump the event loop; a nested run must be refused, not nested."""
+    widget = make_widget()
+    inner = []
+    outer = []
+
+    def reentrant():
+        # Simulates the pie-menu trigger being processed by processEvents()
+        # while this operation is still running.
+        widget._execute_sector("N", lambda: inner.append(1))
+        outer.append(1)
+        return True
+
+    widget._execute_sector("E", reentrant)
+
+    assert outer == [1], "the outer operation must run to completion"
+    assert inner == [], "the nested operation must be rejected"
+    messages = [m for m, _ in toast_recorder]
+    assert any("still running" in m for m in messages)
+
+
 def test_execute_sector_none_callback_cleanly_closes(toast_recorder):
     widget = make_widget()
 
