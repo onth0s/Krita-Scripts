@@ -183,6 +183,143 @@ def test_resolve_action_returns_none_when_missing():
     assert utils.resolve_action(_App(), ["a", "b"]) is None
 
 
+def test_resolve_action_accepts_a_falsy_but_real_action():
+    """
+    A truthiness test would skip a genuine action that defines __bool__/__len__
+    and report the far more misleading "not found". A sip wrapper whose C++
+    object was destroyed is exactly this shape.
+    """
+
+    class _Falsy:
+        def __bool__(self):
+            return False
+
+    class _App:
+        def action(self, act_id):
+            return _Falsy() if act_id == "x" else None
+
+    found = utils.resolve_action(_App(), ["x"])
+    assert found is not None
+    assert isinstance(found, _Falsy)
+
+
+# ── probe_action_ids: the "why" behind a "not found" ──────────────────────────
+
+
+def test_probe_reports_absent_id():
+    class _App:
+        def action(self, act_id):
+            return None
+
+    report = utils.probe_action_ids(_App(), ["layer_merge_down"])
+    assert report == [("layer_merge_down", "returned None (ID absent from the registry)")]
+
+
+def test_probe_reports_falsy_non_none_object():
+    class _Falsy:
+        def __bool__(self):
+            return False
+
+    class _App:
+        def action(self, act_id):
+            return _Falsy()
+
+    (_id, verdict), = utils.probe_action_ids(_App(), ["x"])
+    assert "falsy non-None" in verdict
+
+
+def test_probe_reports_a_raising_lookup():
+    class _App:
+        def action(self, act_id):
+            raise RuntimeError("registry gone")
+
+    (_id, verdict), = utils.probe_action_ids(_App(), ["x"])
+    assert "lookup raised RuntimeError: registry gone" in verdict
+
+
+def test_probe_reports_a_resolved_action():
+    from fakes import Action
+
+    class _App:
+        def action(self, act_id):
+            return Action()
+
+    (_id, verdict), = utils.probe_action_ids(_App(), ["x"])
+    assert verdict.startswith("resolved -> ")
+
+
+def test_probe_falls_back_to_krita_instance(monkeypatch):
+    class _Inst:
+        def action(self, act_id):
+            return None
+
+    monkeypatch.setattr(utils.Krita, "instance", staticmethod(lambda: _Inst()))
+    assert utils.probe_action_ids(None, ["x"])[0][0] == "x"
+
+
+# ── describe_action ───────────────────────────────────────────────────────────
+
+
+def test_describe_action_uses_objectname_and_text():
+    class _Act:
+        def objectName(self):
+            return "layer_merge_down"
+
+        def text(self):
+            return "Merge Down"
+
+    described = utils.describe_action(_Act())
+    assert "objectName='layer_merge_down'" in described
+    assert "text='Merge Down'" in described
+
+
+def test_describe_action_tolerates_a_destroyed_cpp_object():
+    class _Act:
+        def objectName(self):
+            raise RuntimeError("wrapped C/C++ object has been deleted")
+
+    assert "objectName=<unavailable>" in utils.describe_action(_Act())
+
+
+def test_describe_action_falls_back_to_repr_when_nothing_is_readable():
+    class _Act:
+        pass
+
+    assert "object" in utils.describe_action(_Act())
+
+
+def test_describe_action_skips_missing_and_empty_attributes():
+    class _Act:
+        def text(self):
+            return ""
+
+    act = _Act()
+    assert utils.describe_action(act) == repr(act)
+
+
+# ── keep_action_alive ─────────────────────────────────────────────────────────
+
+
+def test_keep_action_alive_pins_the_wrapper():
+    import gc
+
+    class _Act:
+        pass
+
+    act = _Act()
+    utils.keep_action_alive(act)
+    pinned = utils._ACTION_KEEPALIVE[id(act)]
+    del act
+    gc.collect()
+    assert pinned is not None, "the strong reference must outlive the caller's binding"
+
+
+def test_keep_action_alive_ignores_none():
+    before = len(utils._ACTION_KEEPALIVE)
+    utils.keep_action_alive(None)
+    assert len(utils._ACTION_KEEPALIVE) == before
+
+
 def test_resolve_action_falls_back_to_krita_instance(monkeypatch):
     from krita_pie_menu import utils as u
 

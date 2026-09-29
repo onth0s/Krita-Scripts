@@ -10,6 +10,11 @@ from .logger import log_warning
 
 PROTECTED_NAMES: Set[str] = {"WHITE", "B&W", "LINES"}
 
+# Strong references to resolved QActions, keyed by id(). See keep_action_alive():
+# because the dict holds the only guaranteed reference, the objects it keys on
+# can never be collected and their ids can never be recycled.
+_ACTION_KEEPALIVE: Dict[int, Any] = {}
+
 # Result contract for pie-menu operation callbacks, consumed by
 # PieMenuWidget._execute_sector:
 #   True          -> succeeded
@@ -209,15 +214,90 @@ def create_incremental_layer(doc, reference_layer=None, view=None):
 
 def resolve_action(app, candidate_ids: List[str]):
     """
-    Finds and returns the first valid Krita action matching any ID in candidate_ids.
+    Finds and returns the first action matching any ID in candidate_ids.
+
+    The comparison is ``is not None``, never truthiness: a truthiness test
+    silently skips a real action that happens to define ``__bool__``/``__len__``
+    (a sip wrapper for a destroyed C++ object is falsy) and reports the far more
+    misleading "not found". Real PyQt5 QActions are always truthy, so this
+    changes nothing in production -- it is a latent-bug fix.
     """
     if app is None:
         app = Krita.instance()
     for act_id in candidate_ids:
         action = app.action(act_id)
-        if action:
+        if action is not None:
             return action
     return None
+
+
+def probe_action_ids(app, candidate_ids: List[str]) -> List[Tuple[str, str]]:
+    """
+    Per-candidate diagnosis for a lookup that came up empty.
+
+    A bare "not found; tried [...]" cannot distinguish the two ways a candidate
+    can fail:
+
+    * ``app.action()`` returned ``None`` -- the ID is genuinely absent from
+      Krita's action registry.
+    * ``app.action()`` returned a non-``None`` but *falsy* object -- an
+      unexpected binding state, e.g. a sip wrapper whose C++ object was
+      destroyed. This is the case worth knowing about, because the same ID can
+      resolve fine one run and come back "not found" the next.
+    * the lookup raised.
+
+    Repeats the lookups, so only call this on the failure path.
+    """
+    if app is None:
+        app = Krita.instance()
+    report: List[Tuple[str, str]] = []
+    for act_id in candidate_ids:
+        try:
+            action = app.action(act_id)
+        except Exception as exc:  # noqa: BLE001 - diagnosis must not raise
+            report.append((act_id, f"lookup raised {type(exc).__name__}: {exc}"))
+            continue
+        if action is None:
+            report.append((act_id, "returned None (ID absent from the registry)"))
+        elif not action:
+            report.append((act_id, f"returned a falsy non-None object: {action!r}"))
+        else:
+            report.append((act_id, f"resolved -> {describe_action(action)}"))
+    return report
+
+
+def describe_action(action: Any) -> str:
+    """Best-effort human identity for a resolved QAction; never raises."""
+    bits: List[str] = []
+    for attr in ("objectName", "text"):
+        getter = getattr(action, attr, None)
+        if getter is None:
+            continue
+        try:
+            value = getter()
+        except Exception:  # noqa: BLE001 - a destroyed C++ object raises here
+            bits.append(f"{attr}=<unavailable>")
+            continue
+        if isinstance(value, str) and value:
+            bits.append(f"{attr}={value!r}")
+    return " ".join(bits) if bits else repr(action)
+
+
+def keep_action_alive(action: Any) -> None:
+    """
+    Hold a strong reference to a resolved QAction for the process lifetime.
+
+    PyQt5 deletes the underlying C++ object when the last Python wrapper for an
+    **unparented** QObject is garbage collected (verified empirically: unparented
+    -> deleted on GC, parented -> survives). Krita's registry actions are added
+    via ``addAction()`` and are therefore parented, so this is *not* a
+    demonstrated fix for the observed "not found" alternation -- it is
+    defence-in-depth that bounds the "action present, then gone" failure class
+    and removes a well-known PyQt5 crash source at zero cost.
+    """
+    if action is None:
+        return
+    _ACTION_KEEPALIVE[id(action)] = action
 
 
 def find_brush_preset(app, preset_name: str = "0 STD DRW"):

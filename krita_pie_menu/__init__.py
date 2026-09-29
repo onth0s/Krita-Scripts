@@ -2,21 +2,30 @@ from .base_config_dialog import SECTOR_CODES, SECTOR_NAMES, BasePieConfigDialog
 from .base_extension import BasePieMenuExtension
 from .logger import log_error, log_info, log_warning
 from .pie_widget import PieMenuWidget
-from .sync import action_is_enabled, pump_events, settle_until, trigger_action_verified
+from .sync import (
+    action_is_enabled,
+    diagnose_action_ids,
+    pump_events,
+    settle_until,
+    trigger_action_verified,
+)
 from .toast_notification import ToastNotification
 from .utils import (
     CONDITIONS_CONFIG_PATH,
     PROTECTED_NAMES,
     OperationResult,
     create_incremental_layer,
+    describe_action,
     find_brush_preset,
     get_condition_flag,
     get_incremental_layer_name,
     is_empty_paint_layer,
     is_protected_layer,
     is_u8_rgba,
+    keep_action_alive,
     load_config,
     make_doc_active_validator,
+    probe_action_ids,
     read_condition_flag,
     resolve_action,
     save_config,
@@ -47,6 +56,10 @@ __all__ = [
     "get_incremental_layer_name",
     "create_incremental_layer",
     "resolve_action",
+    "probe_action_ids",
+    "describe_action",
+    "keep_action_alive",
+    "diagnose_action_ids",
     "find_brush_preset",
     "set_foreground_black",
     "make_doc_active_validator",

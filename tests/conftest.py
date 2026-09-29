@@ -1,9 +1,10 @@
 """
 Pytest bootstrap that makes the Krita plugins importable headlessly.
 
-When run inside Krita the real ``krita`` and PyQt5 modules are used. When run
-from a plain interpreter (CI / local), minimal stand-ins are injected into
-``sys.modules`` so that only *imports* resolve.
+Stand-ins for ``krita`` and PyQt5 are injected into ``sys.modules`` **unconditionally**
+-- including on machines where the real PyQt5 is installed. See the block at the
+bottom of this file for why that is mandatory rather than merely convenient.
+Set ``KRITA_PYTEST_REAL_QT=1`` to opt out and use the real bindings.
 
 Every exposed name is the same ``_QtWidgetStub`` class: subclassing works
 (``class PieMenuWidget(QWidget)``), instances accept any constructor signature,
@@ -120,10 +121,24 @@ class _QtWidgetStub(metaclass=_StubMeta):
         return _Stub()
 
 
-def _register(module_name, names):
+# True when the stub path is active (i.e. KRITA_PYTEST_REAL_QT is not "1").
+# Read by _register so a real module that landed in sys.modules before conftest
+# ran is replaced rather than silently kept.
+_USE_STUBS = os.environ.get("KRITA_PYTEST_REAL_QT") != "1"
+
+
+def _register(module_name, names, force=None):
     mod = ModuleType(module_name)
     for name in names:
         setattr(mod, name, _QtWidgetStub)
+    if force if force is not None else _USE_STUBS:
+        # Drop any real module that slipped into sys.modules before conftest ran
+        # (e.g. an installed pytest plugin importing PyQt5). `setdefault` alone
+        # would silently leave the real Qt in place and reintroduce the crash.
+        sys.modules.pop(module_name, None)
+        parent, _, leaf = module_name.rpartition(".")
+        if parent in sys.modules:
+            setattr(sys.modules[parent], leaf, mod)
     sys.modules.setdefault(module_name, mod)
 
 
@@ -172,12 +187,18 @@ def _install_pyqt5_stubs():
     )
 
 
-try:
-    import PyQt5.QtWidgets  # noqa: F401
-except ImportError:
+if _USE_STUBS:
+    # The stubs are installed UNCONDITIONALLY, even when PyQt5 is importable.
+    #
+    # Constructing any QWidget subclass before a QApplication exists does not
+    # raise the documented "Must construct a QApplication before a QWidget"
+    # RuntimeError -- it aborts the interpreter via __fastfail (0xC0000409).
+    # Verified for QWidget, QDialog, QPushButton, QLabel and QMessageBox.
+    # QDockWidget additionally raises TypeError when handed a stub as a parent.
+    #
+    # So a machine that has PyQt5 installed (i.e. every Krita developer) would
+    # crash rather than run. This suite is pure logic: config persistence, layer
+    # tree semantics, dispatch control flow. It never needs real rendering, and
+    # real Qt is not "more realistic" here, it is strictly incompatible.
     _install_pyqt5_stubs()
-
-try:
-    import krita  # noqa: F401
-except ImportError:
     _install_krita_stub()

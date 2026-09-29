@@ -18,12 +18,13 @@ synchronous Python work in Krita cannot be interrupted, so it never fires on a
 slow-but-correct run.
 """
 import time
-from typing import Any, Callable, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
+from krita import Krita
 from PyQt5.QtWidgets import QApplication
 
-from .logger import log_error, log_warning
-from .utils import resolve_action
+from .logger import log_error, log_info, log_warning
+from .utils import describe_action, keep_action_alive, probe_action_ids, resolve_action
 
 DEFAULT_SETTLE_TIMEOUT_MS = 2000
 DEFAULT_SETTLE_INTERVAL_MS = 10
@@ -84,6 +85,61 @@ def action_is_enabled(action: Any) -> bool:
         return True
 
 
+def diagnose_action_ids(
+    app: Any,
+    candidate_ids: List[str],
+    label: str = "diagnostic",
+    samples: int = 200,
+) -> Dict[str, Dict[str, int]]:
+    """
+    Sample ``app.action(id)`` repeatedly and report the outcome distribution.
+
+    Built for the unresolved ``layer_merge_down`` anomaly, where the same action
+    reported "is disabled" on one run and "not found" on the next inside a single
+    second. A one-shot probe cannot distinguish an intermittent failure from a
+    genuinely absent ID; sampling in a tight loop can, because a real
+    intermittency shows up as a *mixed* distribution rather than a uniform one.
+
+    Intended to be run from Krita's Scripter, e.g.::
+
+        from krita import Krita
+        from krita_pie_menu.sync import diagnose_action_ids
+        diagnose_action_ids(Krita.instance(), ["layer_merge_down", "merge_layer_down"])
+
+    A uniform ``none`` means the ID really is absent -- stop looking for a
+    lifetime bug. A mixed distribution (some ``none``, some ``disabled``) proves
+    the lookup is unstable and the cause is Krita-side state, not the candidate
+    list. Returns the raw counts so the caller can assert on them.
+    """
+    if app is None:
+        app = Krita.instance()
+
+    report: Dict[str, Dict[str, int]] = {}
+    for act_id in candidate_ids:
+        counts: Dict[str, int] = {}
+        for _ in range(samples):
+            try:
+                action = app.action(act_id)
+            except Exception as exc:  # noqa: BLE001 - diagnosis must not raise
+                key = f"raised:{type(exc).__name__}"
+            else:
+                if action is None:
+                    key = "none"
+                elif not action:
+                    key = "falsy_wrapper"
+                elif not action_is_enabled(action):
+                    key = "disabled"
+                else:
+                    key = "enabled"
+            counts[key] = counts.get(key, 0) + 1
+        report[act_id] = counts
+        summary = ", ".join(f"{k}={v}" for k, v in sorted(counts.items()))
+        verdict = "UNSTABLE" if len(counts) > 1 else "stable"
+        log_warning("sync", f"[{label}] {act_id!r} x{samples}: {summary} ({verdict})")
+
+    return report
+
+
 def trigger_action_verified(
     app: Any,
     candidate_ids: List[str],
@@ -101,8 +157,31 @@ def trigger_action_verified(
     """
     action = resolve_action(app, candidate_ids)
     if action is None:
+        # A bare "not found; tried [...]" cannot tell a genuinely absent ID from
+        # one that resolved moments ago. Probe each candidate so the log records
+        # which it was -- this is the whole diagnosis for the alternation seen in
+        # the wild (layer_merge_down reporting "is disabled" one run and "not
+        # found" the next). Only reached on the failure path, so the extra
+        # lookups cost nothing when the action is present.
+        for act_id, verdict in probe_action_ids(app, candidate_ids):
+            log_warning("sync", f"  {label}: candidate {act_id!r} {verdict}")
         log_warning("sync", f"'{label}' not found; tried {list(candidate_ids)}")
         return False
+    # Pin the wrapper so PyQt5 cannot destroy the C++ object out from under a
+    # later re-resolve. See utils.keep_action_alive.
+    keep_action_alive(action)
+    log_info("sync", f"'{label}' resolved: {describe_action(action)}")
+    if not action:
+        # resolve_action deliberately accepts a falsy non-None result (a truthy
+        # test would skip a genuine action). But a live PyQt5 QAction is ALWAYS
+        # truthy, so a falsy one means the wrapper's C++ object was destroyed.
+        # Say so here rather than letting it fail later with an opaque
+        # AttributeError from trigger().
+        log_warning(
+            "sync",
+            f"'{label}' resolved to a FALSY object ({action!r}); PyQt5 QActions are always "
+            "truthy, so the underlying C++ object is likely already destroyed",
+        )
     if not action_is_enabled(action):
         log_warning("sync", f"'{label}' is disabled in the current context; trigger() would be a no-op")
         return False
