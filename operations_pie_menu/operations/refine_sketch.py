@@ -19,6 +19,7 @@ from krita_pie_menu import (
     log_warning,
     make_doc_active_validator,
     pump_events,
+    renumber_layer_name,
     resolve_action,
     set_foreground_black,
     trigger_action_verified,
@@ -304,6 +305,12 @@ def _renumber_siblings(new_layer: Any) -> None:
     """
     Renumber sibling layers 1..N bottom-to-top, skipping protected layers.
 
+    Naming is delegated to `renumber_layer_name`: a sibling whose a-z characters are
+    all capitalized keeps its text ("INK" -> "2_INK"), anything else collapses to the
+    bare index ("ink" -> "2", "1" -> "2" since it has no a-z characters at all). A
+    layer already sitting at its target name is left untouched, which makes a second
+    Refine Sketch run a no-op.
+
     See AGENTS.md sections 8.3 / 8.4: the child list is snapshotted before any
     mutation, and protected names are never touched.
     """
@@ -314,7 +321,7 @@ def _renumber_siblings(new_layer: Any) -> None:
     for child in list(parent.childNodes()):
         if is_protected_layer(child):
             continue  # leave protected layers alone (see AGENTS.md 8.3)
-        child.setName(str(counter))
+        renumber_layer_name(child, counter)
         counter += 1
 
 

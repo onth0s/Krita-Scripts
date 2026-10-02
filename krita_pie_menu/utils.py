@@ -174,6 +174,57 @@ def get_incremental_layer_name(layer_name: str) -> str:
     return "1"
 
 
+# Sibling-rename rules (see numbered_sibling_name).
+#
+# Both patterns are strictly ASCII and neither uses re.IGNORECASE. IGNORECASE
+# case-folds, so "[a-z]" with it also matches 'Ç', 'Ã', the Kelvin sign and the long
+# s -- which would wrongly report an all-caps name like "AÇÃO" as having a lowercase
+# letter and collapse it to a bare index.
+_AZ_ANY = re.compile(r"[A-Za-z]")
+_AZ_LOWER = re.compile(r"[a-z]")
+_LEADING_INDEX = re.compile(r"^\d+_")
+
+
+def keeps_layer_name(name: str) -> bool:
+    """
+    True when `name` has at least one a-z character (either case) and *none* of them
+    is lowercase -- i.e. an all-capitalized name such as "INK", "CANAL A" or "REFLAY 2".
+
+    A name with no a-z character at all ("1", "23") is False: there is nothing to
+    preserve, so it collapses to the bare index instead of growing into "1_1".
+    """
+    return bool(_AZ_ANY.search(name)) and not _AZ_LOWER.search(name)
+
+
+def numbered_sibling_name(current_name: str, index: int) -> str:
+    """
+    Target name for the sibling sitting at `index` (1-based, bottom-to-top).
+
+    Preserved names become ``"<index>_<name>"``; every other name becomes the bare
+    index. An existing ``"<digits>_"`` prefix from a previous run is stripped before
+    re-prefixing, so repeated renumbering is idempotent ("1_INK" at index 2 -> "2_INK",
+    never "2_1_INK").
+    """
+    if not keeps_layer_name(current_name):
+        return str(index)
+    return f"{index}_{_LEADING_INDEX.sub('', current_name.strip())}"
+
+
+def renumber_layer_name(node: Any, index: int) -> bool:
+    """
+    Rename `node` to numbered_sibling_name(node.name(), index).
+
+    Returns True when setName was called, False when the layer already sits at the
+    right name -- that no-op is deliberate, so an already-correct stack is left
+    completely untouched instead of being rewritten.
+    """
+    desired = numbered_sibling_name(node.name(), index)
+    if node.name() == desired:
+        return False
+    node.setName(desired)
+    return True
+
+
 def create_incremental_layer(doc, reference_layer=None, view=None):
     """
     Creates a new paint layer directly above `reference_layer` (or activeNode if None).

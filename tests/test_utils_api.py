@@ -1,4 +1,6 @@
 
+import pytest
+
 from krita_pie_menu import utils
 
 
@@ -164,6 +166,115 @@ def test_create_incremental_layer_returns_none_when_no_parent_anywhere():
     doc._root = None
     ref = _NoParent("sketch_3")
     assert utils.create_incremental_layer(doc, ref) is None
+
+
+# ── sibling numbering: keeps_layer_name / numbered_sibling_name ───────────────
+
+
+@pytest.mark.parametrize(
+    "name,expected",
+    [
+        ("INK", True),
+        ("CANAL A", True),
+        ("REFLAY 2", True),
+        ("A1", True),
+        ("ink", False),
+        ("Ink", False),
+        ("refLay 2", False),
+        ("_top_", False),
+        # No a-z character at all -> nothing to preserve, so no "1_1".
+        ("1", False),
+        ("23", False),
+        ("_", False),
+        ("", False),
+        # Strictly ASCII a-z: only 'a' in "Ação" disqualifies it, so "AÇÃO" is kept.
+        # These fail if the patterns are switched to re.IGNORECASE, which case-folds
+        # 'Ç'/'Ã' into the [a-z] range.
+        ("Ação", False),
+        ("ÇAO", True),
+        ("AÇÃO", True),
+        ("CANAL AÇÃO", True),
+        # Non-ASCII lowercase does not disqualify: only ASCII a-z counts.
+        ("CANAL AçãO", True),
+    ],
+)
+def test_keeps_layer_name(name, expected):
+    assert utils.keeps_layer_name(name) is expected
+
+
+@pytest.mark.parametrize(
+    "current,index,expected",
+    [
+        # lowercase anywhere -> bare index
+        ("ink", 2, "2"),
+        ("Ink", 1, "1"),
+        ("refLay 2", 3, "3"),
+        ("_top_", 3, "3"),
+        # no a-z at all -> bare index
+        ("1", 2, "2"),
+        ("23", 1, "1"),
+        ("", 1, "1"),
+        # all a-z capitalized -> keep the name
+        ("INK", 2, "2_INK"),
+        ("CANAL A", 5, "5_CANAL A"),
+        # an old "<digits>_" prefix is replaced, never stacked
+        ("1_INK", 2, "2_INK"),
+        ("12_INK3", 2, "2_INK3"),
+        (" 3_INK ", 4, "4_INK"),
+    ],
+)
+def test_numbered_sibling_name(current, index, expected):
+    assert utils.numbered_sibling_name(current, index) == expected
+
+
+class _Named:
+    """Minimal node that records setName calls, so no-ops are observable."""
+
+    def __init__(self, name):
+        self._name = name
+        self.setname_calls = []
+
+    def name(self):
+        return self._name
+
+    def setName(self, name):
+        self._name = name
+        self.setname_calls.append(name)
+
+
+def test_renumber_layer_name_renames_when_different():
+    node = _Named("ink")
+    assert utils.renumber_layer_name(node, 2) is True
+    assert node.name() == "2"
+
+    caps = _Named("INK")
+    assert utils.renumber_layer_name(caps, 3) is True
+    assert caps.name() == "3_INK"
+
+
+def test_renumber_layer_name_is_a_no_op_when_already_correct():
+    """
+    "No op as long as it is in the proper index": an already-numbered layer must not
+    even be written to, so re-running Refine Sketch cannot churn names.
+    """
+    node = _Named("2")
+    assert utils.renumber_layer_name(node, 2) is False
+    assert node.setname_calls == []
+    assert node.name() == "2"
+
+    kept = _Named("2_INK")
+    assert utils.renumber_layer_name(kept, 2) is False
+    assert kept.setname_calls == []
+
+
+def test_renumber_layer_name_moves_a_kept_name_and_stays_idempotent():
+    node = _Named("1_INK")
+    assert utils.renumber_layer_name(node, 2) is True
+    assert node.name() == "2_INK"
+
+    # Second pass at the same index: no further churn.
+    assert utils.renumber_layer_name(node, 2) is False
+    assert node.setname_calls == ["2_INK"]
 
 
 def test_resolve_action_finds_first_match():

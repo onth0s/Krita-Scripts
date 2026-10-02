@@ -3,7 +3,13 @@ from typing import Tuple
 from krita import Krita
 from PyQt5.QtWidgets import QMessageBox
 
-from krita_pie_menu import is_empty_paint_layer, is_protected_layer, log_error, log_info
+from krita_pie_menu import (
+    is_empty_paint_layer,
+    is_protected_layer,
+    log_error,
+    log_info,
+    renumber_layer_name,
+)
 
 
 def validate_sanitize_group() -> Tuple[bool, str]:
@@ -27,7 +33,9 @@ def execute_sanitize_group() -> None:
     Sanitize Group (NE Operation):
     - Purges intermediate empty paint layers that are NOT protected.
     - Ensures a fresh empty paint layer at the top of drawing layers.
-    - Renumbers non-protected layers 1..N (bottom-to-top in the UI).
+    - Renumbers non-protected layers 1..N (bottom-to-top in the UI). A layer whose
+      a-z characters are all capitalized keeps its text ("INK" → "1_INK"); anything
+      else becomes the bare index.
     - Protected layer names ("WHITE", "B&W") are never renamed or removed.
     - "B&W" layer is ALWAYS kept at the absolute TOP-MOST position of the group stack.
     """
@@ -76,11 +84,13 @@ def execute_sanitize_group() -> None:
             group_layer.addChildNode(bw_node, fresh)
 
         # ── 5. Renumber non-protected layers bottom-to-top (1, 2, 3 … N) ─────
+        # renumber_layer_name keeps an all-capitalized name ("INK" → "1_INK") and
+        # skips the setName call entirely when the layer already sits at its target.
         counter = 1
         for child in group_layer.childNodes():  # bottom → top
             if is_protected_layer(child):
                 continue  # leave protected layers alone
-            child.setName(str(counter))
+            renumber_layer_name(child, counter)
             counter += 1
 
         # ── 6. Activate the fresh layer (topmost drawing layer below B&W) ────

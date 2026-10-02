@@ -512,6 +512,33 @@ def test_renumber_siblings_no_parent(wire):
     rs._renumber_siblings(Node("orphan"))  # must not raise
 
 
+def test_renumber_siblings_keeps_all_capitalized_names(wire):
+    """The trailing target is the new sketch layer, so it renumbers too (4th slot)."""
+    parent = Group("parent", [Node("INK"), Node("CANAL A"), Node("refLay")])
+    target = Node("new")
+    target._parent = parent
+    parent._children.append(target)
+
+    rs._renumber_siblings(target)
+
+    # "INK" / "CANAL A" keep their text; "refLay" has a lowercase letter -> bare index.
+    assert [c.name() for c in parent._children] == ["1_INK", "2_CANAL A", "3", "4"]
+
+
+def test_renumber_siblings_is_idempotent(wire):
+    parent = Group("parent", [Node("INK"), Node("1"), Node("LINES")])
+    target = Node("new")
+    target._parent = parent
+    parent._children.append(target)
+
+    rs._renumber_siblings(target)
+    first = [c.name() for c in parent._children]
+
+    rs._renumber_siblings(target)
+    # "LINES" is protected and consumes no index, so the target takes slot 3.
+    assert [c.name() for c in parent._children] == first == ["1_INK", "2", "LINES", "3"]
+
+
 def test_is_detached_tolerates_a_dangling_node(wire):
     """A freed C++ layer makes childNodes() unusable; that must not read as 'done'."""
 

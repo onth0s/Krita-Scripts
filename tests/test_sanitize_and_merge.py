@@ -117,6 +117,27 @@ def test_sanitize_full_flow(monkeypatch, warnings):
     assert warnings == []
 
 
+def test_sanitize_keeps_all_capitalized_names(monkeypatch, warnings):
+    monkeypatch.setattr(sg, "is_protected_layer", _no_protected)
+    monkeypatch.setattr(sg, "is_empty_paint_layer", lambda node: node._empty)
+
+    ink = Node("INK", "paintlayer", empty=False)
+    sketch = Node("refLay", "paintlayer", empty=False)
+    group = Group("g", [ink, sketch])
+    doc = Doc(node=group)
+    app = App(doc)
+    monkeypatch.setattr(sg, "Krita", type("_AppStub", (), {"instance": staticmethod(lambda: app)}))
+
+    sg.execute_sanitize_group()
+
+    fresh = doc.created[0]
+    # "INK" keeps its text; "refLay" has a lowercase letter -> bare index; the fresh
+    # "_top_" layer is lowercase -> bare index too.
+    assert [c.name() for c in group._children] == ["1_INK", "2", "3"]
+    assert fresh.name() == "3"
+    assert warnings == []
+
+
 def test_sanitize_exception(monkeypatch, warnings):
     class _BoomGroup(Group):
         def childNodes(self):
