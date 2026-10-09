@@ -215,7 +215,7 @@ class PieMenuWidget(QWidget):
                 return
             result = callback() if callback else None
         # Operations return True on success, False on failure, or (False, reason)
-        # to explain the failure in the toast. Anything else counts as success.
+        # to explain the failure in the toast. Custom success message can be returned via (True, message).
         failed = result is False or (isinstance(result, tuple) and bool(result) and result[0] is False)
         if failed:
             detail = ""
@@ -223,6 +223,13 @@ class PieMenuWidget(QWidget):
                 detail = f" ({result[1]})"
             ToastNotification.show_toast(f"Action '{label}' could not be executed.{detail}", toast_type="warning")
             return
+        if isinstance(result, tuple) and bool(result) and result[0] is True:
+            if len(result) > 1:
+                if result[1] is None:
+                    return
+                if result[1]:
+                    ToastNotification.show_toast(str(result[1]), toast_type="info")
+                    return
         ToastNotification.show_toast(f"Triggered: {label}", toast_type="info")
 
     def show_at_cursor(self):
@@ -233,8 +240,11 @@ class PieMenuWidget(QWidget):
             if key in self.toggle_states:
                 is_on = self.toggle_states[key]
                 btn.setProperty("toggle_on", is_on)
-            btn.style().unpolish(btn)
-            btn.style().polish(btn)
+            style = btn.style()
+            if style is not None:
+                style.unpolish(btn)
+                style.polish(btn)
+
 
         cursor_pos = QCursor.pos()
         self.origin_pos = cursor_pos
@@ -333,8 +343,11 @@ class PieMenuWidget(QWidget):
         for key, btn in self.buttons.items():
             is_active = key == self.active_direction
             btn.setProperty("active", is_active)
-            btn.style().unpolish(btn)
-            btn.style().polish(btn)
+            style = btn.style()
+            if style is not None:
+                style.unpolish(btn)
+                style.polish(btn)
+
 
     def interrupt_and_wait_for_release(self):
         """Visually hide the menu on interrupt, but keep listening in the background until key release."""

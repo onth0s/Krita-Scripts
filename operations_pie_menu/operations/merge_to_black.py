@@ -6,6 +6,7 @@ from PyQt5.QtGui import QImage
 from PyQt5.QtWidgets import QMessageBox
 
 from krita_pie_menu import (
+    OperationResult,
     find_brush_preset,
     is_protected_layer,
     is_u8_rgba,
@@ -13,6 +14,7 @@ from krita_pie_menu import (
     log_info,
     log_warning,
     make_doc_active_validator,
+    reset_drawing_tool,
     resolve_action,
     set_foreground_black,
 )
@@ -34,7 +36,7 @@ def _flatten_extra_checks(doc: Any, node: Any) -> Tuple[bool, str]:
 validate_merge_to_black = make_doc_active_validator(_flatten_extra_checks)
 
 
-def execute_merge_to_black() -> None:
+def execute_merge_to_black() -> OperationResult:
     """
     Merge to Black (SW Operation):
     - Identifies target group layer (active group or parent group of active layer).
@@ -47,12 +49,12 @@ def execute_merge_to_black() -> None:
     doc = app.activeDocument()
     if not doc:
         QMessageBox.warning(None, "Operations Pie Menu", "No active document open.")
-        return
+        return (False, "No active document open.")
 
     node = doc.activeNode()
     if not node:
         QMessageBox.warning(None, "Operations Pie Menu", "No active layer selected.")
-        return
+        return (False, "No active layer selected.")
 
     if not is_u8_rgba(doc):
         log_warning(
@@ -64,7 +66,7 @@ def execute_merge_to_black() -> None:
             "Operations Pie Menu",
             "Merge to Black requires an 8-bit RGBA document.\nPlease convert the image color model/depth first.",
         )
-        return
+        return (False, "Merge to Black requires an 8-bit RGBA document.")
 
     if node.type() == "grouplayer":
         group_layer = node
@@ -74,7 +76,7 @@ def execute_merge_to_black() -> None:
             group_layer = parent
         else:
             QMessageBox.warning(None, "Operations Pie Menu", "Merge to Black requires a layer inside a Group.")
-            return
+            return (False, "Merge to Black requires a layer inside a Group.")
 
     try:
         # 1. Identify preserved (protected/locked) and mergeable paint layers in group_layer
@@ -100,7 +102,7 @@ def execute_merge_to_black() -> None:
             QMessageBox.information(
                 None, "Operations Pie Menu", "Group Layer contains no unlocked paint layers to merge."
             )
-            return
+            return (False, "Group Layer contains no unlocked paint layers to merge.")
 
         # 2. Compute union bounding box across non-protected paint layers
         min_x, min_y = float("inf"), float("inf")
@@ -115,7 +117,7 @@ def execute_merge_to_black() -> None:
 
         if min_x >= max_x or min_y >= max_y:
             QMessageBox.information(None, "Operations Pie Menu", "Paint layers in group are empty.")
-            return
+            return (False, "Paint layers in group are empty.")
 
         gx, gy = int(min_x), int(min_y)
         gw, gh = int(max_x - min_x), int(max_y - min_y)
@@ -143,8 +145,11 @@ def execute_merge_to_black() -> None:
             img = img.convertToFormat(QImage.Format_ARGB32)
 
         ptr = img.bits()
+        if ptr is None:
+            return (False, "Failed to access pixel buffer")
         ptr.setsize(gw * gh * 4)
         raw_arr = bytearray(ptr)
+
 
         # Process pixels: ARGB32 format in QImage (BGRA in byte order on little-endian x86)
         for i in range(0, len(raw_arr), 4):
@@ -172,7 +177,9 @@ def execute_merge_to_black() -> None:
         # 6. Create new paint layer and set pixel data (simulating alpha lock fill)
         layer_1 = doc.createNode(target_layer_name, "paintlayer")
         layer_1.setAlphaLocked(True)
-        layer_1.setPixelData(black_silhouette_bytes, gx, gy, gw, gh)
+        if not layer_1.setPixelData(black_silhouette_bytes, gx, gy, gw, gh):
+            log_warning("merge_to_black", "Krita rejected silhouette pixels.")
+            return (False, "Krita rejected silhouette pixels.")
         layer_1.setAlphaLocked(False)
 
         # 7. Re-assemble stack inside group_layer in strict hierarchy
@@ -197,35 +204,25 @@ def execute_merge_to_black() -> None:
         doc.refreshProjection()
 
         # 9. Activate Freehand Brush tool, reset color to black, activate '0 STD DRW' brush
-        erase_act = app.action("erase_action")
-        if erase_act and erase_act.isChecked():
-            erase_act.trigger()
-
-        brush_act = resolve_action(app, ["KritaShape/KritaShapeFreehand", "KritaShapeFreehand"])
-        if brush_act:
-            brush_act.trigger()
-
-        reset_act = app.action("reset_fg_bg")
-        if reset_act:
-            reset_act.trigger()
-
         window = app.activeWindow()
-        if window:
-            view = window.activeView()
-            if view:
-                set_foreground_black(doc, view)
-                preset = find_brush_preset(app, "0 STD DRW")
-                if preset:
-                    try:
-                        view.activateResource(preset)
-                    except Exception as e:
-                        log_warning("merge_to_black", f"Failed activating brush preset: {e}")
+        view = window.activeView() if window else None
+        reset_drawing_tool(
+            app,
+            doc,
+            view,
+            action_resolver=resolve_action,
+            brush_finder=find_brush_preset,
+            color_setter=set_foreground_black,
+            warning_logger=log_warning,
+        )
 
         log_info(
             "merge_to_black",
             f"Successfully merged group '{group_layer.name()}' into black silhouette layer '1'.",
         )
+        return True
 
     except Exception as e:
         log_error("merge_to_black", "Error during merge to black operation", e)
         QMessageBox.warning(None, "Operations Pie Menu", f"Failed to merge to black: {e}")
+        return (False, f"Failed to merge to black: {e}")

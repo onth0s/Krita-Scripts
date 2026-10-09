@@ -4,7 +4,12 @@ from typing import Any, Callable, Dict, Tuple
 from krita import Krita
 from PyQt5.QtWidgets import QMessageBox
 
-from krita_pie_menu import BasePieMenuExtension, make_doc_active_validator
+from krita_pie_menu import (
+    BasePieMenuExtension,
+    action_is_enabled,
+    make_doc_active_validator,
+    resolve_action,
+)
 
 from .config_dialog import FILTER_OPTIONS, SectorConfigDialog
 
@@ -107,11 +112,11 @@ class FiltersPieMenuExtension(BasePieMenuExtension):
             "krita_filter_gaussian_high_pass" if "high" in fallback_text.lower() else "",
         ]
 
-        for cid in candidates:
-            if not cid:
-                continue
-            action = app.action(cid)
-            if action:
-                action.trigger()
-                return True
+        clean_candidates = [cid for cid in candidates if cid]
+        action = resolve_action(app, clean_candidates)
+        if action is not None:
+            if not action_is_enabled(action):
+                return False
+            action.trigger()
+            return True
         return False

@@ -157,3 +157,20 @@ def test_single_flight_releases_after_exception(monkeypatch):
 
     with utils.single_flight("op_b") as acquired:
         assert acquired is True, "a crashed operation must not wedge the lock"
+
+
+def test_reset_drawing_tool_defaults_to_krita_instance(monkeypatch):
+    from fakes import Action, App
+    app = App(None, actions={"erase_action": Action(checked=False)})
+    monkeypatch.setattr(utils.Krita, "instance", staticmethod(lambda: app))
+    # Call without passing app; should default to Krita.instance()
+    utils.reset_drawing_tool(
+        app=None,
+        doc=None,
+        view=None,
+        action_resolver=lambda a, ids: None,
+        brush_finder=lambda a, n: None,
+        color_setter=lambda v, r, g, b: None,
+    )
+
+

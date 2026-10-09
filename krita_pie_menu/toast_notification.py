@@ -1,4 +1,4 @@
-from PyQt5.QtCore import QEasingCurve, QPropertyAnimation, Qt, QTimer
+from PyQt5.QtCore import QEasingCurve, QPropertyAnimation, QRect, Qt, QTimer
 from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QGraphicsOpacityEffect, QHBoxLayout, QLabel, QWidget
 
@@ -106,7 +106,7 @@ class ToastNotification(QWidget):
             self.anim_out.setStartValue(1.0)
             self.anim_out.setEndValue(0.0)
             self.anim_out.setEasingCurve(QEasingCurve.InCubic)
-            self.anim_out.finished.connect(self.close)
+            self.anim_out.finished.connect(lambda: None if self.close() else None)
             self.anim_out.start()
         except RuntimeError:
             # Toast was superseded/closed while the fade timer was still pending.
@@ -196,9 +196,11 @@ class ToastNotification(QWidget):
                 pos_x = win_geo.x() + max(gap, left_dock_offset + gap)
                 pos_y = win_geo.y() + win_geo.height() - toast.height() - (status_bar_h + gap)
             else:
-                screen = QApplication.primaryScreen().geometry()
+                primary = QApplication.primaryScreen()
+                screen = primary.geometry() if primary is not None else QRect(0, 0, 1920, 1080)
                 pos_x = screen.x() + max(gap, left_dock_offset + gap)
                 pos_y = screen.y() + screen.height() - toast.height() - (status_bar_h + gap)
+
 
         toast.move(pos_x, pos_y)
         toast.show()

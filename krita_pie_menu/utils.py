@@ -414,3 +414,46 @@ def make_doc_active_validator(extra_checks=None):
         return True, ""
 
     return validator
+
+
+def reset_drawing_tool(
+    app: Any = None,
+    doc: Any = None,
+    view: Any = None,
+    preset_name: str = "0 STD DRW",
+    action_resolver: Any = resolve_action,
+    brush_finder: Any = find_brush_preset,
+    color_setter: Any = set_foreground_black,
+    warning_logger: Any = log_warning,
+) -> None:
+    """
+    Resets tools and brush state after layer drawing operations:
+    1. Disables eraser mode if active.
+    2. Sets active tool to Freehand Brush.
+    3. Resets FG/BG color.
+    4. Sets active view foreground color to solid black.
+    5. Activates the given brush preset.
+    """
+    if app is None:
+        app = Krita.instance()
+
+    erase_act = app.action("erase_action")
+    if erase_act and erase_act.isChecked():
+        erase_act.trigger()
+
+    brush_act = action_resolver(app, ["KritaShape/KritaShapeFreehand", "KritaShapeFreehand"])
+    if brush_act:
+        brush_act.trigger()
+
+    reset_act = app.action("reset_fg_bg")
+    if reset_act:
+        reset_act.trigger()
+
+    if doc is not None and view is not None:
+        color_setter(doc, view)
+        preset = brush_finder(app, preset_name)
+        if preset:
+            try:
+                view.activateResource(preset)
+            except Exception as e:
+                warning_logger("reset_drawing_tool", f"Failed activating brush preset: {e}")

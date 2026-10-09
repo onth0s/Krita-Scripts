@@ -54,6 +54,16 @@ OP_HANDLERS: Dict[str, Callable[[], Any]] = {
     "op_duplicate_layer": execute_duplicate_layer,
 }
 
+OP_VALIDATORS: Dict[str, Callable[[], Any]] = {
+    "op_refine_sketch": validate_refine_sketch,
+    "op_sanitize_group": validate_sanitize_group,
+    "op_merge_to_black": validate_merge_to_black,
+    "op_fit_layer": validate_fit_layer,
+    "op_bw_preview": validate_bw_preview,
+    "op_setup_canvas": validate_init_canvas,
+    "op_duplicate_layer": validate_duplicate_layer,
+}
+
 
 class OperationsPieMenuExtension(BasePieMenuExtension):
     def __init__(self, parent):
@@ -83,16 +93,7 @@ class OperationsPieMenuExtension(BasePieMenuExtension):
         config = self.load_config()
         callbacks: Dict[str, Any] = {}
         items_meta: Dict[str, Any] = {}
-        validators: Dict[str, Any] = {
-            "N": validate_refine_sketch,
-            "NE": validate_sanitize_group,
-            "E": _unassigned_validator,
-            "SE": validate_bw_preview,
-            "S": validate_init_canvas,
-            "SW": validate_merge_to_black,
-            "W": validate_fit_layer,
-            "NW": validate_duplicate_layer,
-        }
+        validators: Dict[str, Any] = {}
 
         dup_reflay = self._get_duplicate_reflay_condition()
         refine_callback = _make_refine_callback(dup_reflay)
@@ -101,6 +102,7 @@ class OperationsPieMenuExtension(BasePieMenuExtension):
             act_id = data.get("action_id", "")
             label = data.get("label", "")
             items_meta[code] = (label, act_id)
+            validators[code] = OP_VALIDATORS.get(act_id, _unassigned_validator)
 
             if act_id == "op_refine_sketch":
                 callbacks[code] = refine_callback
@@ -118,8 +120,9 @@ class OperationsPieMenuExtension(BasePieMenuExtension):
             act = app.action(action_id)
             if act:
                 act.trigger()
-                return
+                return True
         ToastNotification.show_toast(f"Stub [{code}] {label}", toast_type="info")
+        return True, None
 
     def open_config_dialog(self):
         dlg = OperationsConfigDialog(self.config_path, on_save_callback=None)

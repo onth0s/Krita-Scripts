@@ -43,6 +43,27 @@ def pump_events(doc: Optional[Any] = None) -> None:
         doc.waitForDone()
 
 
+def sync_active_node(
+    doc: Optional[Any],
+    view: Optional[Any],
+    node: Optional[Any],
+    warning_logger: Any = log_warning,
+) -> None:
+    """
+    Point the document and the view at `node`.
+
+    Krita actions such as merge-down act on the view's active node, so updating
+    only `doc.setActiveNode()` lets the action target the wrong layer.
+    """
+    if doc is not None and node is not None:
+        doc.setActiveNode(node)
+    if view is not None and node is not None:
+        try:
+            view.setActiveNode(node)
+        except Exception as e:
+            warning_logger("sync", f"Could not sync active node on the view: {e}")
+
+
 def settle_until(
     predicate: Callable[[], bool],
     doc: Optional[Any] = None,

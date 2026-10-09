@@ -439,3 +439,55 @@ def test_merge_black_activate_resource_exception(monkeypatch):
     m2b.execute_merge_to_black()
 
     assert any("preset" in str(a[1]) for a in warnings_log)
+
+
+def test_merge_black_pixels_rejected(monkeypatch):
+    monkeypatch.setattr(m2b, "is_protected_layer", _no_protected)
+    monkeypatch.setattr(m2b, "is_u8_rgba", lambda doc: True)
+    _fake_qimage(monkeypatch, bytes(range(16)))
+
+    class _RejectLayer(Node):
+        def setPixelData(self, data, x, y, w, h):
+            return False
+
+    ink = Node("ink", "paintlayer", empty=False)
+    group = Group("g", [ink])
+
+    class _RejectDoc(Doc):
+        def createNode(self, name, nodeType):
+            return _RejectLayer(name, nodeType)
+
+    doc = _RejectDoc(node=group)
+    doc._root = group
+    app = App(doc)
+    monkeypatch.setattr(m2b, "Krita", type("_AppStub", (), {"instance": staticmethod(lambda: app)}))
+
+    res = m2b.execute_merge_to_black()
+    assert res == (False, "Krita rejected silhouette pixels.")
+
+
+def test_merge_black_ptr_none(monkeypatch):
+    monkeypatch.setattr(m2b, "is_protected_layer", _no_protected)
+    monkeypatch.setattr(m2b, "is_u8_rgba", lambda doc: True)
+
+    class _NullBitsImage:
+        Format_ARGB32 = 1
+        def __init__(self, *args):
+            pass
+        def format(self):
+            return 1
+        def bits(self):
+            return None
+
+    monkeypatch.setattr(m2b, "QImage", _NullBitsImage)
+
+    ink = Node("ink", "paintlayer", empty=False)
+    group = Group("g", [ink])
+    doc = Doc(node=group)
+    doc._root = group
+    app = App(doc)
+    monkeypatch.setattr(m2b, "Krita", type("_AppStub", (), {"instance": staticmethod(lambda: app)}))
+
+    res = m2b.execute_merge_to_black()
+    assert res == (False, "Failed to access pixel buffer")
+

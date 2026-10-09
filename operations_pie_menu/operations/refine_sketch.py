@@ -20,8 +20,10 @@ from krita_pie_menu import (
     make_doc_active_validator,
     pump_events,
     renumber_layer_name,
+    reset_drawing_tool,
     resolve_action,
     set_foreground_black,
+    sync_active_node,
     trigger_action_verified,
 )
 
@@ -59,18 +61,7 @@ def _is_detached(node: Any, parent: Any) -> bool:
 
 
 def _sync_active(doc: Any, view: Any, node: Any) -> None:
-    """
-    Point the document *and* the view at `node`.
-
-    Krita actions such as merge-down act on the view's active node, so updating
-    only `doc.setActiveNode()` lets the action target the wrong layer.
-    """
-    doc.setActiveNode(node)
-    if view is not None:
-        try:
-            view.setActiveNode(node)
-        except Exception as e:
-            log_warning("refine_sketch", f"Could not sync active node on the view: {e}")
+    sync_active_node(doc, view, node, warning_logger=log_warning)
 
 
 def _clear_selection(doc: Any, app: Any) -> None:
@@ -409,18 +400,15 @@ def execute_refine_sketch(duplicate_reflay: bool = False) -> OperationResult:
     _sync_active(doc, view, new_layer)
 
     # Step 8: Reset tools & brush preset
-    reset_act = app.action("reset_fg_bg")
-    if reset_act:
-        reset_act.trigger()
-
-    if view:
-        set_foreground_black(doc, view)
-        preset = find_brush_preset(app, "0 STD DRW")
-        if preset:
-            try:
-                view.activateResource(preset)
-            except Exception as e:
-                log_warning("refine_sketch", f"Failed activating brush preset: {e}")
+    reset_drawing_tool(
+        app,
+        doc,
+        view,
+        action_resolver=resolve_action,
+        brush_finder=find_brush_preset,
+        color_setter=set_foreground_black,
+        warning_logger=log_warning,
+    )
 
     log_info("refine_sketch", f"Successfully refined sketch into new layer '{new_layer.name()}'")
     return True

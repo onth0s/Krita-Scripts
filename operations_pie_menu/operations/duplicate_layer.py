@@ -1,10 +1,13 @@
 from krita import Krita
-from PyQt5.QtWidgets import QApplication, QMessageBox
+from PyQt5.QtWidgets import QMessageBox
 
 from krita_pie_menu import (
+    OperationResult,
+    action_is_enabled,
     log_error,
     log_info,
     make_doc_active_validator,
+    pump_events,
     read_condition_flag,
     resolve_action,
 )
@@ -12,7 +15,7 @@ from krita_pie_menu import (
 validate_duplicate_layer = make_doc_active_validator()
 
 
-def execute_duplicate_layer() -> None:
+def execute_duplicate_layer() -> OperationResult:
     """
     Duplicate (NW Operation):
     - If an active selection exists:
@@ -28,12 +31,12 @@ def execute_duplicate_layer() -> None:
     doc = app.activeDocument()
     if not doc:
         QMessageBox.warning(None, "Operations Pie Menu", "No active document open.")
-        return
+        return (False, "No active document open.")
 
     node = doc.activeNode()
     if not node:
         QMessageBox.warning(None, "Operations Pie Menu", "No active layer selected.")
-        return
+        return (False, "No active layer selected.")
 
     try:
         sel = doc.selection()
@@ -42,16 +45,14 @@ def execute_duplicate_layer() -> None:
             clip_act = resolve_action(app, ["edit_cut", "cut"] if use_cut else ["edit_copy", "copy"])
             paste_act = resolve_action(app, ["edit_paste", "paste"])
 
-            if clip_act and paste_act:
+            if clip_act and paste_act and action_is_enabled(clip_act) and action_is_enabled(paste_act):
                 # Execute cut or copy on the current active layer selection
                 clip_act.trigger()
-                QApplication.processEvents()
-                doc.waitForDone()
+                pump_events(doc)
 
                 # Paste creates a new paint layer containing the cut/copied selection
                 paste_act.trigger()
-                QApplication.processEvents()
-                doc.waitForDone()
+                pump_events(doc)
 
                 pasted_layer = doc.activeNode()
                 if pasted_layer and pasted_layer != node:
@@ -78,13 +79,12 @@ def execute_duplicate_layer() -> None:
                     deselect_act.trigger()
                 else:
                     doc.setSelection(None)
-                QApplication.processEvents()
-                doc.waitForDone()
+                pump_events(doc)
 
                 doc.refreshProjection()
                 op_mode = "Cut+Duplicated" if use_cut else "Copied+Pasted"
                 log_info("duplicate_layer", f"{op_mode} active selection from '{node.name()}'.")
-                return
+                return True
 
         parent = node.parentNode() or doc.rootNode()
 
@@ -100,8 +100,10 @@ def execute_duplicate_layer() -> None:
         doc.setActiveNode(duplicate)
         doc.refreshProjection()
         log_info("duplicate_layer", f"Duplicated '{node.name()}' as active working copy.")
+        return True
 
     except Exception as e:
         log_error("duplicate_layer", "Failed to duplicate layer", e)
         QMessageBox.warning(None, "Operations Pie Menu", f"Failed to duplicate layer: {e}")
+        return (False, f"Failed to duplicate layer: {e}")
 

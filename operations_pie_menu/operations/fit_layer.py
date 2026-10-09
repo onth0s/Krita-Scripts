@@ -4,6 +4,7 @@ from PyQt5.QtGui import QImage
 from PyQt5.QtWidgets import QMessageBox
 
 from krita_pie_menu import (
+    OperationResult,
     is_u8_rgba,
     log_error,
     log_info,
@@ -20,7 +21,7 @@ def _is_keep_aspect_ratio_enabled() -> bool:
 validate_fit_layer = make_doc_active_validator()
 
 
-def execute_fit_layer() -> None:
+def execute_fit_layer() -> OperationResult:
     """
     Fit Layer to Canvas (West Operation):
     Scales and centers active layer or group layer content to canvas dimensions while preserving aspect ratio.
@@ -29,12 +30,12 @@ def execute_fit_layer() -> None:
     doc = app.activeDocument()
     if not doc:
         QMessageBox.warning(None, "Operations Pie Menu", "No active document open.")
-        return
+        return (False, "No active document open.")
 
     active_layer = doc.activeNode()
     if not active_layer:
         QMessageBox.warning(None, "Operations Pie Menu", "No active layer selected.")
-        return
+        return (False, "No active layer selected.")
 
     if not is_u8_rgba(doc):
         log_warning(
@@ -46,7 +47,7 @@ def execute_fit_layer() -> None:
             "Operations Pie Menu",
             "Fit Layer requires an 8-bit RGBA document.\nPlease convert the image color model/depth first.",
         )
-        return
+        return (False, "Fit Layer requires an 8-bit RGBA document.")
 
     doc_w = doc.width()
     doc_h = doc.height()
@@ -56,7 +57,7 @@ def execute_fit_layer() -> None:
 
     if gw <= 0 or gh <= 0:
         QMessageBox.information(None, "Operations Pie Menu", "Active layer is empty.")
-        return
+        return (False, "Active layer is empty.")
 
     keep_ar = _is_keep_aspect_ratio_enabled()
     scale_w = doc_w / gw
@@ -83,7 +84,7 @@ def execute_fit_layer() -> None:
             child_paint_layers = scaled_group.findChildNodes("", True, False, "paintlayer")
             if not child_paint_layers:
                 QMessageBox.information(None, "Operations Pie Menu", "Group Layer contains no paint layers.")
-                return
+                return (False, "Group Layer contains no paint layers.")
 
             for child in child_paint_layers:
                 cbounds = child.bounds()
@@ -113,6 +114,8 @@ def execute_fit_layer() -> None:
                 actual_h = scaled_img.height()
 
                 ptr = scaled_img.constBits()
+                if ptr is None:
+                    return (False, "Failed to access scaled pixel buffer")
                 ptr.setsize(actual_w * actual_h * 4)
                 new_bytes = QByteArray(bytes(ptr))
 
@@ -126,6 +129,7 @@ def execute_fit_layer() -> None:
             doc.setActiveNode(scaled_group)
             doc.refreshProjection()
             log_info("fit_layer", f"Fitted group layer '{scaled_group.name()}' to canvas.")
+            return True
 
         else:
             raw_bytes = bytearray(active_layer.pixelData(gx, gy, gw, gh))
@@ -139,13 +143,18 @@ def execute_fit_layer() -> None:
             actual_h = scaled_img.height()
 
             ptr = scaled_img.constBits()
+            if ptr is None:
+                return (False, "Failed to access scaled pixel buffer")
             ptr.setsize(actual_w * actual_h * 4)
             new_bytes = QByteArray(bytes(ptr))
+
 
             parent = active_layer.parentNode() or doc.rootNode()
 
             scaled_layer = doc.createNode(active_layer.name(), "paintlayer")
-            scaled_layer.setPixelData(new_bytes, target_gx, target_gy, actual_w, actual_h)
+            if not scaled_layer.setPixelData(new_bytes, target_gx, target_gy, actual_w, actual_h):
+                log_warning("fit_layer", "Krita rejected the scaled pixel buffer.")
+                return (False, "Krita rejected scaled pixel buffer.")
 
             try:
                 scaled_layer.setAlphaLocked(active_layer.alphaLocked())
@@ -178,7 +187,9 @@ def execute_fit_layer() -> None:
             doc.setActiveNode(scaled_layer)
             doc.refreshProjection()
             log_info("fit_layer", f"Fitted layer '{scaled_layer.name()}' to canvas.")
+            return True
 
     except Exception as e:
         log_error("fit_layer", "Failed to fit layer to canvas", e)
         QMessageBox.warning(None, "Operations Pie Menu", f"Failed to fit layer to canvas: {e}")
+        return (False, f"Failed to fit layer to canvas: {e}")

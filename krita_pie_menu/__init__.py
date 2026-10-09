@@ -7,6 +7,7 @@ from .sync import (
     diagnose_action_ids,
     pump_events,
     settle_until,
+    sync_active_node,
     trigger_action_verified,
 )
 from .toast_notification import ToastNotification
@@ -30,6 +31,7 @@ from .utils import (
     probe_action_ids,
     read_condition_flag,
     renumber_layer_name,
+    reset_drawing_tool,
     resolve_action,
     save_config,
     set_foreground_black,
@@ -68,10 +70,12 @@ __all__ = [
     "diagnose_action_ids",
     "find_brush_preset",
     "set_foreground_black",
+    "reset_drawing_tool",
     "make_doc_active_validator",
     "single_flight",
     "action_is_enabled",
     "pump_events",
+    "sync_active_node",
     "settle_until",
     "trigger_action_verified",
 ]

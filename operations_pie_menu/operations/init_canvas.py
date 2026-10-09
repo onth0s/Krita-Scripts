@@ -5,11 +5,14 @@ from PyQt5.QtCore import QByteArray
 from PyQt5.QtWidgets import QMessageBox
 
 from krita_pie_menu import (
+    OperationResult,
     find_brush_preset,
+    is_u8_rgba,
     log_error,
     log_info,
     log_warning,
     make_doc_active_validator,
+    reset_drawing_tool,
     resolve_action,
     set_foreground_black,
 )
@@ -17,7 +20,7 @@ from krita_pie_menu import (
 validate_init_canvas = make_doc_active_validator()
 
 
-def execute_init_canvas() -> None:
+def execute_init_canvas() -> OperationResult:
     """
     Init Canvas (South Operation):
     - Prompts 'Nuke Document?' if >1 layer present.
@@ -29,7 +32,19 @@ def execute_init_canvas() -> None:
     doc = app.activeDocument()
     if not doc:
         QMessageBox.warning(None, "Operations Pie Menu", "No active document open.")
-        return
+        return (False, "No active document open.")
+
+    if not is_u8_rgba(doc):
+        log_warning(
+            "init_canvas",
+            f"Init Canvas requires an 8-bit RGBA document (got {doc.colorModel()}/{doc.colorDepth()}).",
+        )
+        QMessageBox.warning(
+            None,
+            "Operations Pie Menu",
+            "Init Canvas requires an 8-bit RGBA document.\nPlease convert the image color model/depth first.",
+        )
+        return (False, "Init Canvas requires an 8-bit RGBA document.")
 
     def count_all_nodes(node: Any) -> List[Any]:
         nodes = []
@@ -45,7 +60,7 @@ def execute_init_canvas() -> None:
             None, "Nuke Document?", "Nuke Document?", QMessageBox.Yes | QMessageBox.No, QMessageBox.No
         )
         if reply != QMessageBox.Yes:
-            return
+            return (False, "Canvas initialization cancelled.")
 
         for n in all_nodes:
             try:
@@ -66,7 +81,7 @@ def execute_init_canvas() -> None:
                 QMessageBox.No,
             )
             if reply != QMessageBox.Yes:
-                return
+                return (False, "Canvas initialization cancelled.")
 
     # Prepare base layer
     top_nodes = doc.topLevelNodes()
@@ -115,31 +130,18 @@ def execute_init_canvas() -> None:
     doc.setActiveNode(layer_1)
     doc.refreshProjection()
 
-    # 7. Turn off Eraser mode if active
-    erase_act = app.action("erase_action")
-    if erase_act and erase_act.isChecked():
-        erase_act.trigger()
-
-    # 8. Set active tool to Freehand Brush
-    brush_act = resolve_action(app, ["KritaShape/KritaShapeFreehand", "KritaShapeFreehand"])
-    if brush_act:
-        brush_act.trigger()
-
-    # 9. Reset FG/BG and set black color & brush preset
-    reset_act = app.action("reset_fg_bg")
-    if reset_act:
-        reset_act.trigger()
-
+    # 7. Reset tools, color to black & brush preset
     window = app.activeWindow()
-    if window:
-        view = window.activeView()
-        if view:
-            set_foreground_black(doc, view)
-            preset = find_brush_preset(app, "0 STD DRW")
-            if preset:
-                try:
-                    view.activateResource(preset)
-                except Exception as e:
-                    log_warning("init_canvas", f"Failed activating brush preset: {e}")
+    view = window.activeView() if window else None
+    reset_drawing_tool(
+        app,
+        doc,
+        view,
+        action_resolver=resolve_action,
+        brush_finder=find_brush_preset,
+        color_setter=set_foreground_black,
+        warning_logger=log_warning,
+    )
 
     log_info("init_canvas", "Successfully initialized canvas structure.")
+    return True

@@ -36,8 +36,21 @@ def _base_doc(children):
 
 def test_init_no_doc(monkeypatch, warnings):
     monkeypatch.setattr(ic, "Krita", type("_S", (), {"instance": staticmethod(lambda: App(None))}))
-    ic.execute_init_canvas()
+    res = ic.execute_init_canvas()
+    assert res == (False, "No active document open.")
     assert len(warnings) == 1
+
+
+def test_init_not_u8(monkeypatch, warnings):
+    doc, root = _base_doc([Node("a")])
+    doc._color_depth = "F16"
+    logged = _wire(monkeypatch)
+    app = App(doc)
+    monkeypatch.setattr(ic, "Krita", type("_S", (), {"instance": staticmethod(lambda: app)}))
+    res = ic.execute_init_canvas()
+    assert res == (False, "Init Canvas requires an 8-bit RGBA document.")
+    assert len(warnings) == 1
+    assert any("8-bit" in str(w) for w in logged["warning"])
 
 
 def test_init_nuke_declined(monkeypatch):
@@ -46,10 +59,12 @@ def test_init_nuke_declined(monkeypatch):
     app = App(doc)
     monkeypatch.setattr(ic, "Krita", type("_S", (), {"instance": staticmethod(lambda: app)}))
 
-    ic.execute_init_canvas()
+    res = ic.execute_init_canvas()
+    assert res == (False, "Canvas initialization cancelled.")
 
     assert not logged["info"], "must abort when user declines nuke"
     assert [c.name() for c in root.childNodes()] == ["a", "b"]
+
 
 
 def test_init_nuke_accepted(monkeypatch):

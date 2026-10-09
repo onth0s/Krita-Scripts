@@ -99,19 +99,26 @@ class ConditionsPieMenuExtension(BasePieMenuExtension):
         new_state = self.toggle_condition("duplicate_reflay")
         status_str = "ON" if new_state else "OFF"
         ToastNotification.show_toast(f"Duplicate RefLay: {status_str}", toast_type="info")
+        return True, None
 
     def toggle_keep_aspect_ratio(self):
         new_state = self.toggle_condition("keep_aspect_ratio")
         status_str = "ON" if new_state else "OFF"
         ToastNotification.show_toast(f"Keep Aspect Ratio (Fit): {status_str}", toast_type="info")
+        return True, None
 
     def toggle_duplicate_cut(self):
         new_state = self.toggle_condition("duplicate_cut")
         status_str = "ON" if new_state else "OFF"
         ToastNotification.show_toast(f"Duplicate Cut: {status_str}", toast_type="info")
+        return True, None
 
     def make_stub_callback(self, code: str):
-        return lambda: ToastNotification.show_toast(f"Condition [{code}] stub not implemented", toast_type="info")
+        def _stub():
+            ToastNotification.show_toast(f"Condition [{code}] stub not implemented", toast_type="info")
+            return True, None
+
+        return _stub
 
     def open_config_dialog(self):
         dlg = ConditionsConfigDialog(self.config_path, on_save_callback=None)

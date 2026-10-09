@@ -124,6 +124,26 @@ def test_execute_sector_tuple_success_shows_success(toast_recorder):
     assert "Triggered" in message
 
 
+def test_execute_sector_tuple_success_suppresses_toast_when_none(toast_recorder):
+    widget = make_widget()
+
+    widget._execute_sector("E", lambda: (True, None))
+
+    assert len(toast_recorder) == 0
+
+
+def test_execute_sector_tuple_success_custom_message(toast_recorder):
+    widget = make_widget()
+
+    widget._execute_sector("E", lambda: (True, "Custom Success"))
+
+    assert len(toast_recorder) == 1
+    message, toast_type = toast_recorder[0]
+    assert toast_type == INFO_TOAST
+    assert message == "Custom Success"
+
+
+
 def test_execute_sector_tuple_failure_without_reason(toast_recorder):
     widget = make_widget()
 

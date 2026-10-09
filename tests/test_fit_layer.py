@@ -273,3 +273,69 @@ def test_keep_aspect_ratio_enabled(monkeypatch):
     assert fl._is_keep_aspect_ratio_enabled() is True
     monkeypatch.setattr(fl, "read_condition_flag", lambda key, default: False)
     assert fl._is_keep_aspect_ratio_enabled() is False
+
+
+def test_fit_single_layer_set_pixel_data_rejected(monkeypatch):
+    class _RejectDoc(Doc):
+        def createNode(self, name, ntype):
+            node = super().createNode(name, ntype)
+            node.setPixelData_ok = False
+            return node
+
+    active = Node("ink", empty=False)
+    parent = Group("root", [active])
+    doc = _RejectDoc(active, root=parent)
+    app = App(doc)
+    logged = _wire(monkeypatch)
+    monkeypatch.setattr(fl, "Krita", type("_S", (), {"instance": staticmethod(lambda: app)}))
+
+    res = fl.execute_fit_layer()
+    assert res == (False, "Krita rejected scaled pixel buffer.")
+    assert any("rejected" in str(w) for w in logged["warning"])
+
+
+def test_fit_ptr_none_handled(monkeypatch):
+    class _NullBitsImage(_FakeQImage):
+        def constBits(self):
+            return None
+
+        def copy(self):
+            c = _NullBitsImage(self._raw, self._w, self._h, self._w * 4, self._fmt)
+            return c
+
+    active = Node("ink", empty=False)
+    parent = Group("root", [active])
+    doc = Doc(active, root=parent)
+    app = App(doc)
+    _wire(monkeypatch)
+    monkeypatch.setattr(fl, "QImage", _NullBitsImage)
+    monkeypatch.setattr(fl, "Krita", type("_S", (), {"instance": staticmethod(lambda: app)}))
+
+    res = fl.execute_fit_layer()
+    assert res == (False, "Failed to access scaled pixel buffer")
+
+
+def test_fit_group_ptr_none(monkeypatch):
+    class _NullBitsImage(_FakeQImage):
+        def constBits(self):
+            return None
+
+        def copy(self):
+            c = _NullBitsImage(self._raw, self._w, self._h, self._w * 4, self._fmt)
+            return c
+
+    child = Node("c1", empty=False)
+    group = Group("g", [child])
+    parent = Group("root", [group])
+    doc = Doc(group, root=parent)
+    app = App(doc)
+    _wire(monkeypatch)
+    monkeypatch.setattr(fl, "QImage", _NullBitsImage)
+    monkeypatch.setattr(fl, "Krita", type("_S", (), {"instance": staticmethod(lambda: app)}))
+
+
+    res = fl.execute_fit_layer()
+    assert res == (False, "Failed to access scaled pixel buffer")
+
+
+

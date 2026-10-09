@@ -4,6 +4,7 @@ from krita import Krita
 from PyQt5.QtWidgets import QMessageBox
 
 from krita_pie_menu import (
+    OperationResult,
     is_empty_paint_layer,
     is_protected_layer,
     log_error,
@@ -28,7 +29,7 @@ def validate_sanitize_group() -> Tuple[bool, str]:
     return False, "Sanitize Group requires a Group Layer (or a layer inside one)."
 
 
-def execute_sanitize_group() -> None:
+def execute_sanitize_group() -> OperationResult:
     """
     Sanitize Group (NE Operation):
     - Purges intermediate empty paint layers that are NOT protected.
@@ -43,12 +44,12 @@ def execute_sanitize_group() -> None:
     doc = app.activeDocument()
     if not doc:
         QMessageBox.warning(None, "Operations Pie Menu", "No active document open.")
-        return
+        return (False, "No active document open.")
 
     node = doc.activeNode()
     if not node:
         QMessageBox.warning(None, "Operations Pie Menu", "No active layer selected.")
-        return
+        return (False, "No active layer selected.")
 
     if node.type() == "grouplayer":
         group_layer = node
@@ -58,7 +59,7 @@ def execute_sanitize_group() -> None:
             group_layer = parent
         else:
             QMessageBox.warning(None, "Operations Pie Menu", "Sanitize requires a layer inside a Group.")
-            return
+            return (False, "Sanitize requires a layer inside a Group.")
 
     try:
         # ── 1. Purge empty non-protected paint layers ────────────────────────
@@ -101,7 +102,9 @@ def execute_sanitize_group() -> None:
             "sanitize_group",
             f"Sanitized '{group_layer.name()}': {len(group_layer.childNodes())} layers, active → '{fresh.name()}'",
         )
+        return True
 
     except Exception as e:
         log_error("sanitize_group", "Error during group sanitization", e)
         QMessageBox.warning(None, "Operations Pie Menu", f"Failed to sanitize group: {e}")
+        return (False, f"Failed to sanitize group: {e}")

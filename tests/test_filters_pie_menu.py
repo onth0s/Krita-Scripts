@@ -110,6 +110,23 @@ def test_trigger_action_fallback_synonyms(monkeypatch):
     assert triggered == [1]
 
 
+def test_trigger_action_returns_false_when_disabled(monkeypatch):
+    ext = FiltersPieMenuExtension(parent=None)
+
+    class _DisabledAct:
+        def isEnabled(self):
+            return False
+
+        def trigger(self):
+            raise AssertionError("Must not trigger disabled action")
+
+    app = _App(doc=_Doc(_Node("paintlayer")), actions={"krita_filter_perchannel": _DisabledAct()})
+    monkeypatch.setattr("filters_pie_menu.filters_pie_menu.Krita.instance", staticmethod(lambda: app))
+
+    assert ext.trigger_action("krita_filter_curves", "Color Curves") is False
+
+
+
 def test_make_trigger_callback_returns_bool(monkeypatch):
     ext = FiltersPieMenuExtension(parent=None)
     app = _App(doc=_Doc(_Node("paintlayer")))
